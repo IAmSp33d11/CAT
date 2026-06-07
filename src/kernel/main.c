@@ -28,6 +28,12 @@ static volatile struct limine_module_request module_request = {
     .revision = 1
 };
 
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_hhdm_request hhdm_request = {
+    .id = LIMINE_HHDM_REQUEST_ID,
+    .revision = 0
+};
+
 
 // Finally, define the start and end markers for the Limine requests.
 // These can also be moved anywhere, to any .c file, as seen fit.
@@ -160,18 +166,18 @@ void draw_char(struct limine_framebuffer *framebuffer, uint8_t *font_buffer,
     }
 }
 
-
-
-void draw_string(struct limine_framebuffer *framebuffer, uint8_t *font_buffer, 
-                 const char *str, size_t x, size_t y, uint32_t text_color) {
-    for (size_t i = 0; str[i] != '\0'; i++) {
-        draw_char(framebuffer, font_buffer, str[i], x + (i * 8), y, text_color);
-    }
-
-}
 struct limine_framebuffer *framebuffer = NULL;
 uint8_t *font_buffer = NULL;
 uint32_t text_color = 0x00FFFFFF;
+
+void clear_screen() {
+    volatile uint32_t *fb_ptr = framebuffer->address;
+    for (size_t y = 0; y < framebuffer->width; y++) {
+        for (size_t x = 0; x < framebuffer->height; x++) {
+            fb_ptr[y * (framebuffer->pitch / 4) + x] = 0; // Make it black
+        }
+    }
+}
 
 
 void print(const char *str) {
@@ -179,6 +185,13 @@ void print(const char *str) {
     static size_t cursor_y = 0;
 
     for (size_t i = 0; str[i] != '\0'; i++) {
+        if (cursor_x + 8 >= framebuffer->width) {
+            cursor_x = 0;
+            cursor_y += 16;
+        }
+        if (cursor_y + 16 >= framebuffer->height) {
+            cursor_y = 0; 
+        }
         if (str[i] == '\n') {
             cursor_x = 0;
             cursor_y += 16; // font height
@@ -205,6 +218,16 @@ void kmain(void) {
         hcf();
     }
 
+    // Fetch the first framebuffer.
+    framebuffer = framebuffer_request.response->framebuffers[0];
+
+    // Make sure we got our Higher-Half Direct Map
+    if (hhdm_request.response == NULL) {
+        panic(framebuffer);
+    }
+
+    uint64_t hhdm = hhdm_request.response->offset;
+
     font_buffer = NULL;
     if (module_request.response != NULL) {
         for (uint64_t i = 0; i < module_request.response->module_count; i++) {
@@ -216,8 +239,7 @@ void kmain(void) {
             }
         }
     }
-    // Fetch the first framebuffer.
-    framebuffer = framebuffer_request.response->framebuffers[0];
+
     if (font_buffer == NULL) {
         panic(framebuffer);
     }
@@ -226,7 +248,7 @@ void kmain(void) {
     print("CAT is booting...\nTest #1\n");
     print("Test #2");
 
-
+    clear_screen();
     // We're done, just hang...
     hcf();
 }
