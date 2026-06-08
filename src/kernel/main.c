@@ -35,6 +35,8 @@ static volatile struct limine_hhdm_request hhdm_request = {
     .revision = 0
 };
 
+
+__attribute__((used, section(".limine_requests")))
 static volatile struct limine_tsc_frequency_request tsc_request = {
     .id = LIMINE_TSC_FREQUENCY_REQUEST_ID,
     .revision = 0
@@ -70,7 +72,7 @@ void play_bw_video(uint8_t *video_bin_ptr, uint32_t total_frames, uint64_t tsc_h
     size_t offset_x = (framebuffer->width - (VIDEO_WIDTH * scale)) / 2;
     size_t offset_y = (framebuffer->height - (VIDEO_HEIGHT * scale)) / 2;
 
-    clear_screen();
+    clear_screen(framebuffer);
 
     // Set up our initial baseline clock deadline
     uint64_t next_frame_deadline = rdtsc();
@@ -152,12 +154,14 @@ void kmain(void) {
 
 
     font_buffer = NULL;
-    bad_apple = NULL;
+    uint8_t *bad_apple = NULL;
     uint64_t bad_apple_size = 0;
     if (module_request.response != NULL) {
         for (uint64_t i = 0; i < module_request.response->module_count; i++) {
             struct limine_file *file = module_request.response->modules[i];
             
+            
+
             if (file->string != NULL && memcmp(file->string, "FONT", 4) == 0) {
                 font_buffer = (uint8_t *)file->address;
                 continue;
