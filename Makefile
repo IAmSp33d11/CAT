@@ -65,4 +65,4 @@ run: $(ISO_IMG)
 .PHONY: clean
 clean:
 	@echo "[CLEAN] Destroying build artifacts..."
-	rm -rf bin obj iso_root $(ISO_IMG)
+	rm -rf bin obj iso_root limine $(ISO_IMG)
