@@ -52,6 +52,69 @@ static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_
 __attribute__((used, section(".limine_requests_end")))
 static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARKER;
 
+
+#define VIDEO_WIDTH 160
+#define VIDEO_HEIGHT 120
+#define BYTES_PER_FRAME ((VIDEO_WIDTH * VIDEO_HEIGHT) / 8) // 2400 bytes
+
+// Play a black and white video, for example, bad apple.
+void play_bw_video(uint8_t *video_bin_ptr, uint32_t total_frames, uint64_t tsc_hz) {
+    uint64_t ticks_per_frame = tsc_hz / 30;
+    volatile uint32_t *fb_ptr = framebuffer->address;
+    size_t pitch_pixels = framebuffer->pitch / 4;
+
+    // Determine how many times we can scale 160x120 up to fit the screen height
+    size_t scale = framebuffer->height / VIDEO_HEIGHT;
+    if (scale < 1) scale = 1;
+
+    size_t offset_x = (framebuffer->width - (VIDEO_WIDTH * scale)) / 2;
+    size_t offset_y = (framebuffer->height - (VIDEO_HEIGHT * scale)) / 2;
+
+    clear_screen();
+
+    // Set up our initial baseline clock deadline
+    uint64_t next_frame_deadline = rdtsc();
+
+    for (uint32_t frame = 0; frame < total_frames; frame++) {
+        // Point to the exact 2400-byte block for this frame
+        uint8_t *frame_data = video_bin_ptr + (frame * BYTES_PER_FRAME);
+        uint32_t byte_idx = 0;
+
+        for (size_t y = 0; y < VIDEO_HEIGHT; y++) {
+            for (size_t x = 0; x < VIDEO_WIDTH; x += 8) {
+                // Fetch the packed 8 pixels
+                uint8_t packed_byte = frame_data[byte_idx++];
+
+                for (int bit = 0; bit < 8; bit++) {
+                    // Check individual bits from Left to Right (MSB to LSB)
+                    uint32_t color = (packed_byte & (0x80 >> bit)) ? 0x00FFFFFF : 0x00000000;
+                    size_t pixel_x = x + bit;
+
+                    // Draw a scaled block of pixels (nearest-neighbor scaling)
+                    for (size_t sy = 0; sy < scale; sy++) {
+                        for (size_t sx = 0; sx < scale; sx++) {
+                            size_t scr_x = offset_x + (pixel_x * scale) + sx;
+                            size_t scr_y = offset_y + (y * scale) + sy;
+
+                            // Prevent out-of-bounds screen corruption
+                            if (scr_x < framebuffer->width && scr_y < framebuffer->height) {
+                                fb_ptr[scr_y * pitch_pixels + scr_x] = color;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        next_frame_deadline += ticks_per_frame;
+
+        // Wait until the timer says its been 1/30th of a second
+        while (rdtsc() < next_frame_deadline) {
+            __asm__ volatile("pause"); 
+        }
+    }
+}
+
 // The following will be our kernel's entry point.
 // If renaming kmain() to something else, make sure to change the
 // linker script accordingly.
@@ -76,34 +139,65 @@ void kmain(void) {
     }
 
     uint64_t hhdm = hhdm_request.response->offset;
-
+    uint64_t tsc_hz;
     // Make sure we got our TSC Frequency
     if (tsc_request.response == NULL) {
-        panic(framebuffer);
+        tsc_hz = calibrate_tsc();
+    } else {
+        tsc_hz = tsc_request.response->frequency;
     }
-    uint64_t tsc_hz = tsc_request.response->frequency;
+    
 
     uint64_t ticks_per_frame = tsc_hz / 30;
 
 
     font_buffer = NULL;
+    bad_apple = NULL;
+    uint64_t bad_apple_size = 0;
     if (module_request.response != NULL) {
         for (uint64_t i = 0; i < module_request.response->module_count; i++) {
             struct limine_file *file = module_request.response->modules[i];
             
             if (file->string != NULL && memcmp(file->string, "FONT", 4) == 0) {
                 font_buffer = (uint8_t *)file->address;
-                break;
+                continue;
             }
+            if (file->string != NULL && memcmp(file->string, "bad_apple", 9) == 0) {
+                bad_apple = (uint8_t *)file->address;
+                bad_apple_size = file->size;
+                continue;
+            } 
         }
+    } else {
+        panic(framebuffer);
     }
+    if (bad_apple == NULL) {
+        clear_screen(framebuffer);
+        print("WE CANNOT FIND THE BAD_APPLE.BIN FILE SO WE GO KABLOOY\n");
+        hcf();
+    }
+    uint32_t bad_apple_frames = bad_apple_size / 2400;
 
     if (font_buffer == NULL) {
         panic(framebuffer);
     }
 
     clear_screen(framebuffer);
-    draw_trans_flag(framebuffer);
+
+
+    print("Video binary located! Initializing playback loop...\n");
+    
+    // Give the user 1 second to read the text before drawing
+    uint64_t startup_delay = rdtsc() + tsc_hz;
+    while(rdtsc() < startup_delay);
+
+    // 4. BLAST IT!
+    play_bw_video(bad_apple, bad_apple_frames, tsc_hz);
+
+    if (tsc_hz == 0) {
+        clear_screen(framebuffer);
+        print("FUCK");
+    }
     // We're done, just hang...
     hcf();
 }
