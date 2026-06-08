@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <limine.h>
+#include "helpful.h"
 
 // Set the base revision to 6, this is recommended as this is the latest
 // base revision described by the Limine boot protocol specification.
@@ -34,6 +35,11 @@ static volatile struct limine_hhdm_request hhdm_request = {
     .revision = 0
 };
 
+static volatile struct limine_tsc_frequency_request tsc_request = {
+    .id = LIMINE_TSC_FREQUENCY_REQUEST_ID,
+    .revision = 0
+};
+
 
 // Finally, define the start and end markers for the Limine requests.
 // These can also be moved anywhere, to any .c file, as seen fit.
@@ -45,163 +51,6 @@ static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_
 
 __attribute__((used, section(".limine_requests_end")))
 static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARKER;
-
-// GCC and Clang reserve the right to generate calls to the following
-// 4 functions even if they are not directly called.
-// Implement them as the C specification mandates.
-// DO NOT remove or rename these functions, or stuff will eventually break!
-// They CAN be moved to a different .c file.
-
-void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
-    uint8_t *restrict pdest = dest;
-    const uint8_t *restrict psrc = src;
-
-    for (size_t i = 0; i < n; i++) {
-        pdest[i] = psrc[i];
-    }
-
-    return dest;
-}
-
-void *memset(void *s, int c, size_t n) {
-    uint8_t *p = s;
-
-    for (size_t i = 0; i < n; i++) {
-        p[i] = (uint8_t)c;
-    }
-
-    return s;
-}
-
-void *memmove(void *dest, const void *src, size_t n) {
-    uint8_t *pdest = dest;
-    const uint8_t *psrc = src;
-
-    if ((uintptr_t)src > (uintptr_t)dest) {
-        for (size_t i = 0; i < n; i++) {
-            pdest[i] = psrc[i];
-        }
-    } else if ((uintptr_t)src < (uintptr_t)dest) {
-        for (size_t i = n; i > 0; i--) {
-            pdest[i-1] = psrc[i-1];
-        }
-    }
-
-    return dest;
-}
-
-int memcmp(const void *s1, const void *s2, size_t n) {
-    const uint8_t *p1 = s1;
-    const uint8_t *p2 = s2;
-
-    for (size_t i = 0; i < n; i++) {
-        if (p1[i] != p2[i]) {
-            return p1[i] < p2[i] ? -1 : 1;
-        }
-    }
-
-    return 0;
-}
-
-// Halt and catch fire function.
-static void hcf(void) {
-    __asm__ volatile("cli; hlt;");
-}
-
-void panic(struct limine_framebuffer *framebuffer) {
-    volatile uint32_t *fb_ptr = framebuffer->address;
-    for (size_t y = 0; y < framebuffer->height; y++) {
-        for (size_t x = 0; x < framebuffer->width; x++) {
-            fb_ptr[y * (framebuffer->pitch / 4) + x] = 0x00FF0000;
-        }
-    }
-    hcf();
-}
-
-// This is a very important function.
-void draw_trans_flag(struct limine_framebuffer *framebuffer) {
-    volatile uint32_t *fb_ptr = framebuffer->address;
-    size_t stripe_height = framebuffer->height / 5;
-    for (size_t y = 0; y < framebuffer->height; y++) {
-        for (size_t x = 0; x < framebuffer->width; x++) {
-            if (y < stripe_height) {
-                fb_ptr[y * (framebuffer->pitch / 4) + x] = 0x005BCFFB;
-            } else if (y < stripe_height * 2) {
-                fb_ptr[y * (framebuffer->pitch / 4) + x] = 0x00F5ABB9;
-            } else if (y < stripe_height * 3) {
-                fb_ptr[y * (framebuffer->pitch / 4) + x] = 0x00FFFFFF;
-            } else if (y < stripe_height * 4) {
-                fb_ptr[y * (framebuffer->pitch / 4) + x] = 0x00F5ABB9;
-            } else {
-                fb_ptr[y * (framebuffer->pitch / 4) + x] = 0x005BCFFB;
-            }
-            
-        }
-    }
-}
-
-void draw_char(struct limine_framebuffer *framebuffer, uint8_t *font_buffer, 
-               char c, size_t start_x, size_t start_y, uint32_t text_color) {
-    
-    volatile uint32_t *fb_ptr = framebuffer->address;
-    size_t pitch_pixels = framebuffer->pitch / 4;
-
-    uint8_t *char_glyph = font_buffer + ((uint8_t)c * 16);
-
-    for (size_t row = 0; row < 16; row++) {
-        uint8_t bits = char_glyph[row];
-
-        for (size_t col = 0; col < 8; col++) {
-            // Check bit from left to right (MSB to LSB)
-            if (bits & (0x80 >> col)) {
-                size_t pixel_x = start_x + col;
-                size_t pixel_y = start_y + row;
-
-                // Screen boundary check
-                if (pixel_x < framebuffer->width && pixel_y < framebuffer->height) {
-                    fb_ptr[pixel_y * pitch_pixels + pixel_x] = text_color;
-                }
-            }
-        }
-    }
-}
-
-struct limine_framebuffer *framebuffer = NULL;
-uint8_t *font_buffer = NULL;
-uint32_t text_color = 0x00FFFFFF;
-
-void clear_screen() {
-    volatile uint32_t *fb_ptr = framebuffer->address;
-    for (size_t y = 0; y < framebuffer->width; y++) {
-        for (size_t x = 0; x < framebuffer->height; x++) {
-            fb_ptr[y * (framebuffer->pitch / 4) + x] = 0; // Make it black
-        }
-    }
-}
-
-
-void print(const char *str) {
-    static size_t cursor_x = 0;
-    static size_t cursor_y = 0;
-
-    for (size_t i = 0; str[i] != '\0'; i++) {
-        if (cursor_x + 8 >= framebuffer->width) {
-            cursor_x = 0;
-            cursor_y += 16;
-        }
-        if (cursor_y + 16 >= framebuffer->height) {
-            cursor_y = 0; 
-        }
-        if (str[i] == '\n') {
-            cursor_x = 0;
-            cursor_y += 16; // font height
-            continue;
-        }
-
-        draw_char(framebuffer, font_buffer, str[i], cursor_x, cursor_y, text_color);
-        cursor_x += 8; // font width
-    }
-}
 
 // The following will be our kernel's entry point.
 // If renaming kmain() to something else, make sure to change the
@@ -228,6 +77,15 @@ void kmain(void) {
 
     uint64_t hhdm = hhdm_request.response->offset;
 
+    // Make sure we got our TSC Frequency
+    if (tsc_request.response == NULL) {
+        panic(framebuffer);
+    }
+    uint64_t tsc_hz = tsc_request.response->frequency;
+
+    uint64_t ticks_per_frame = tsc_hz / 30;
+
+
     font_buffer = NULL;
     if (module_request.response != NULL) {
         for (uint64_t i = 0; i < module_request.response->module_count; i++) {
@@ -244,11 +102,8 @@ void kmain(void) {
         panic(framebuffer);
     }
 
-
-    print("CAT is booting...\nTest #1\n");
-    print("Test #2");
-
-    clear_screen();
+    clear_screen(framebuffer);
+    draw_trans_flag(framebuffer);
     // We're done, just hang...
     hcf();
 }

@@ -12,7 +12,7 @@ CFLAGS  := -Wall -Wextra -O2 -std=c11 -ffreestanding \
 LDFLAGS := -m elf_x86_64 -nostdlib -static -z max-page-size=0x1000 -T linker.lds
 
 
-SRCS    := src/kernel/main.c
+SRCS    := src/kernel/main.c src/libraries/helpful.c
 OBJS    := $(SRCS:src/%.c=obj/%.o)
 
 all: $(OUTPUT)
@@ -56,7 +56,7 @@ $(ISO_IMG): $(OUTPUT)
 .PHONY: run
 run: $(ISO_IMG)
 	@echo "[LAUNCH] Initializing CAT core inside QEMU..."
-	qemu-system-x86_64 -enable-kvm -cpu host -m 2G -cdrom $(ISO_IMG) -serial stdio
+	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -serial stdio
 
 .PHONY: clean
 clean:
