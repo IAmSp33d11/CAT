@@ -44,10 +44,16 @@ void draw_char(struct limine_framebuffer *framebuffer, uint8_t *font_buffer,
                char c, size_t start_x, size_t start_y, uint32_t text_color);
 void clear_screen();
 void print(const char *str);
+void panic_but_msg(struct limine_framebuffer *framebuffer, const char* msg);
 
 
 extern struct limine_framebuffer *framebuffer;
 extern uint8_t *font_buffer;
 extern uint32_t text_color;
+
+void reverse(char s[]);
+void itoa_hex(uint32_t n, char s[]);
+void itoa(uint32_t n, char s[]);
+size_t strlen(const char* str);
 
 #endif

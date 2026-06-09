@@ -116,6 +116,16 @@ void panic(struct limine_framebuffer *framebuffer) {
     hcf();
 }
 
+void panic_but_msg(struct limine_framebuffer *framebuffer, const char* msg) {
+    for (size_t y = 0; y < framebuffer->height; y++) {
+        for (size_t x = 0; x < framebuffer->width; x++) {
+            draw_pixel(x, y, 0x00FF0000);
+        }
+    }
+    print(msg);
+    hcf();
+}
+
 // This is a very important function.
 void draw_trans_flag(struct limine_framebuffer *framebuffer) {
     size_t stripe_height = framebuffer->height / 5;
@@ -190,5 +200,54 @@ void print(const char *str) {
 
         draw_char(framebuffer, font_buffer, str[i], cursor_x, cursor_y, text_color);
         cursor_x += 8; // font width
+    }
+}
+
+
+// Functions I grabbed from my old OS's? OS'es? I dunno my old string.h file.
+size_t strlen(const char* str) 
+{
+	size_t len = 0;
+	while (str[len])
+		len++;
+	return len;
+}
+
+
+void itoa(uint32_t n, char s[])
+{
+    uint32_t i;
+
+    i = 0;
+    do {
+        s[i++] = n % 10 + '0';
+    } while ((n /= 10) > 0);
+    s[i] = '\0';
+    reverse(s);
+}
+
+void itoa_hex(uint32_t n, char s[]) {
+    uint32_t i;
+    i = 0;
+    do {
+        int digit = n % 16;
+        if (digit < 10)
+            s[i++] = digit + '0';
+        else
+            s[i++] = digit - 10 + 'A';
+    } while ((n /= 16) > 0);
+    s[i] = '\0';
+    reverse(s);
+}
+
+void reverse(char s[])
+{
+    int i, j;
+    char c;
+
+    for (i = 0, j = strlen(s)-1; i<j; i++, j--) {
+        c = s[i];
+        s[i] = s[j];
+        s[j] = c;
     }
 }

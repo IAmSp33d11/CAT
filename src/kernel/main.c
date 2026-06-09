@@ -4,19 +4,12 @@
 #include <limine.h>
 #include "helpful.h"
 
-// Set the base revision to 6, this is recommended as this is the latest
-// base revision described by the Limine boot protocol specification.
-// See specification for further info.
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(6);
 
-// The Limine requests can be placed anywhere, but it is important that
-// the compiler does not optimise them away, so, usually, they should
-// be made volatile or equivalent, _and_ they should be accessed at least
-// once or marked as used with the "used" attribute as done here.
 
-
+// We request stuff from Limine
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_framebuffer_request framebuffer_request = {
     .id = LIMINE_FRAMEBUFFER_REQUEST_ID,
@@ -50,9 +43,7 @@ static volatile struct limine_memmap_request memmap_request = {
 };
 
 
-// Finally, define the start and end markers for the Limine requests.
-// These can also be moved anywhere, to any .c file, as seen fit.
-
+// I dunno why I need these.
 __attribute__((used, section(".limine_requests_start")))
 static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_MARKER;
 
@@ -61,12 +52,10 @@ static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_
 __attribute__((used, section(".limine_requests_end")))
 static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARKER;
 
+#define MAX_MEMMAP_SIZE     64 // I mean its almost certainly not gonna have over 64 entries.
 
 
-
-// The following will be our kernel's entry point.
-// If renaming kmain() to something else, make sure to change the
-// linker script accordingly.
+// Hey future me! If you rename this function, change it in linker.lds in ENTRY() too!
 void kmain(void) {
     // Ensure the bootloader actually understands our base revision (see spec).
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
@@ -115,13 +104,29 @@ void kmain(void) {
         panic(framebuffer);
     }
 
+    uint64_t memmap_size = 0;
+    struct limine_memmap_entry **memmap;
+    if (memmap_request.response == NULL) {
+        panic_but_msg(framebuffer, "FATAL ERROR: FAILED TO FETCH MEMMAP FROM LIMINE BOOTLOADER!");
+    }
+    memmap_size = memmap_request.response->entry_count;
+    memmap = memmap_request.response->entries;
 
 
 
     if (tsc_hz == 0) {
-        clear_screen(framebuffer);
-        print("FUCK");
+        panic_but_msg(framebuffer, "FATAL ERROR: FAILED TO SYNCHRONIZE TSC!");
     }
+    print("Successfully booted into the kernel!\n");
+    char buffer[128];
+    itoa(memmap_size, buffer);
+    print("We have ");
+    print(buffer);
+    print(" entries in the memory map!\n");
+    print("The TSC's clock speed is ");
+    itoa(tsc_hz, buffer);
+    print(buffer);
+    print("Hz!\n");
     // We're done, just hang...
     hcf();
 }
