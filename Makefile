@@ -15,7 +15,7 @@ LDFLAGS := -m elf_x86_64 -nostdlib -static -z max-page-size=0x1000 -T linker.lds
 SRCS    := src/kernel/main.c src/libraries/helpful.c
 OBJS    := $(SRCS:src/%.c=obj/%.o)
 
-all: get_limine $(OUTPUT)
+all: $(OUTPUT)
 
 $(OUTPUT): $(OBJS)
 	@mkdir -p bin
@@ -28,7 +28,7 @@ obj/%.o: src/%.c
 	@echo "[CC] $<"
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(ISO_IMG): $(OUTPUT)
+$(ISO_IMG): $(OUTPUT) limine
 	@echo "[ISO] Staging bootable directory tree..."
 	@mkdir -p iso_root/boot/limine
 	@mkdir -p iso_root/EFI/BOOT
@@ -52,10 +52,11 @@ $(ISO_IMG): $(OUTPUT)
 	@echo "[ISO] Flashing MBR boot sectors..."
 	@./limine/limine bios-install $(ISO_IMG) 2>/dev/null
 
-get_limine:
-	curl -L https://github.com/Limine-Bootloader/Limine/releases/latest/download/limine-binary.tar.gz | gunzip | tar -xf -
-	mv limine-binary/ limine
-
+limine:
+	@rm -rf limine limine-binary	
+	@curl -L https://github.com/Limine-Bootloader/Limine/releases/latest/download/limine-binary.tar.gz | gunzip | tar -xf -
+	@mv limine-binary/ limine
+	$(MAKE) -C limine
 
 .PHONY: run
 run: $(ISO_IMG)
