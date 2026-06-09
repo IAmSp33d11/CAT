@@ -43,6 +43,13 @@ static volatile struct limine_tsc_frequency_request tsc_request = {
 };
 
 
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_memmap_request memmap_request = {
+    .id = LIMINE_MEMMAP_REQUEST_ID,
+    .revision = 0
+};
+
+
 // Finally, define the start and end markers for the Limine requests.
 // These can also be moved anywhere, to any .c file, as seen fit.
 
@@ -88,10 +95,6 @@ void kmain(void) {
     } else {
         tsc_hz = tsc_request.response->frequency;
     }
-    
-
-    uint64_t ticks_per_frame = tsc_hz / 30;
-
 
     font_buffer = NULL;
     if (module_request.response != NULL) {
