@@ -1,5 +1,6 @@
 CC := x86_64-elf-gcc
 LD := x86_64-elf-ld
+NASM := nasm
 OUTPUT := bin/cat_kernel.elf
 ISO_IMG := out/cat.iso
 
@@ -9,14 +10,18 @@ CFLAGS  := -Wall -Wextra -O2 -std=c11 -ffreestanding \
            -mno-80387 -mno-mmx -mno-sse -mno-sse2 -mno-red-zone \
            -mcmodel=kernel -Isrc/include
 
+NASMFLAGS := -f elf64
+
 LDFLAGS := -m elf_x86_64 -nostdlib -static -z max-page-size=0x1000 -T linker.lds
 
 
 SRCS_C   := $(shell find src -name "*.c")
 SRCS_ASM := $(shell find src -name "*.s" -o -name "*.S")
+SRCS_NASM := $(shell find src -name "*.asm")
 
-OBJS     := $(patsubst src/%.c,obj/%.o,$(SRCS_C)) $(patsubst src/%.s,obj/%.o,$(patsubst src/%.S,obj/%.o,$(SRCS_ASM)))
-
+OBJS     := $(patsubst src/%.c,obj/%.o,$(SRCS_C)) \
+            $(patsubst src/%.s,obj/%.o,$(patsubst src/%.S,obj/%.o,$(SRCS_ASM))) \
+            $(patsubst src/%.asm,obj/%.o,$(SRCS_NASM))
 
 all: $(OUTPUT)
 
@@ -40,6 +45,11 @@ obj/%.o: src/%.S
 	@mkdir -p $(@D)
 	@echo "[AS] $<"
 	$(CC) $(CFLAGS) -c $< -o $@
+
+obj/%.o: src/%.asm
+	@mkdir -p $(@D)
+	@echo "[AS-NAS] $<"
+	$(NASM) $(NASMFLAGS) $< -o $@
 
 $(ISO_IMG): $(OUTPUT) limine
 	@echo "[ISO] Staging bootable directory tree..."
@@ -66,7 +76,7 @@ $(ISO_IMG): $(OUTPUT) limine
 	@./limine/limine bios-install $(ISO_IMG) 2>/dev/null
 
 limine:
-	@rm -rf limine limine-binary	
+	@rm -rf limine limine-binary    
 	@curl -L https://github.com/Limine-Bootloader/Limine/releases/latest/download/limine-binary.tar.gz | gunzip | tar -xf -
 	@mv limine-binary/ limine
 	$(MAKE) -C limine
@@ -79,4 +89,4 @@ run: $(ISO_IMG)
 .PHONY: clean
 clean:
 	@echo "[CLEAN] Destroying build artifacts..."
-	rm -rf bin obj iso_root limine $(ISO_IMG)
+	rm -rf bin obj iso_root $(ISO_IMG)

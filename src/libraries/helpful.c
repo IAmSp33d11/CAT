@@ -169,9 +169,12 @@ void draw_char(struct limine_framebuffer *framebuffer, uint8_t *font_buffer,
     }
 }
 
-
+static size_t cursor_x = 0;
+static size_t cursor_y = 0;
 
 void clear_screen() {
+    cursor_x = 0;
+    cursor_y = 0;
     for (size_t y = 0; y < framebuffer->height; y++) {
         for (size_t x = 0; x < framebuffer->width; x++) {
             draw_pixel(x, y, 0);
@@ -181,9 +184,6 @@ void clear_screen() {
 
 
 void print(const char *str) {
-    static size_t cursor_x = 0;
-    static size_t cursor_y = 0;
-
     for (size_t i = 0; str[i] != '\0'; i++) {
         if (cursor_x + 8 >= framebuffer->width) {
             cursor_x = 0;

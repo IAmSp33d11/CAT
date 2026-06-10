@@ -55,7 +55,8 @@ static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARK
 #define MAX_MEMMAP_SIZE     64 // I mean its almost certainly not gonna have over 64 entries.
 
 
-extern void setup_gdt();
+extern void setup_gdt(void);
+extern void idt_init(void);
 // Hey future me! If you rename this function, change it in linker.lds in ENTRY() too!
 void startup(void) {
     // Ensure the bootloader actually understands our base revision (see spec).
@@ -132,6 +133,14 @@ void startup(void) {
     setup_gdt();
 
     print("WE SETUP THE GDT!\n");
+
+    idt_init();
+
+    print("WE SETUP THE IDT!\n");
+
+    __asm__ volatile ("int $0x00"); 
+    
+
     // We're done, just hang...
     hcf();
 }
