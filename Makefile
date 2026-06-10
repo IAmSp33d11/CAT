@@ -12,8 +12,11 @@ CFLAGS  := -Wall -Wextra -O2 -std=c11 -ffreestanding \
 LDFLAGS := -m elf_x86_64 -nostdlib -static -z max-page-size=0x1000 -T linker.lds
 
 
-SRCS    := src/kernel/main.c src/libraries/helpful.c
-OBJS    := $(SRCS:src/%.c=obj/%.o)
+SRCS_C   := $(shell find src -name "*.c")
+SRCS_ASM := $(shell find src -name "*.s" -o -name "*.S")
+
+OBJS     := $(patsubst src/%.c,obj/%.o,$(SRCS_C)) $(patsubst src/%.s,obj/%.o,$(patsubst src/%.S,obj/%.o,$(SRCS_ASM)))
+
 
 all: $(OUTPUT)
 
@@ -26,6 +29,16 @@ $(OUTPUT): $(OBJS)
 obj/%.o: src/%.c
 	@mkdir -p $(@D)
 	@echo "[CC] $<"
+	$(CC) $(CFLAGS) -c $< -o $@
+
+obj/%.o: src/%.s
+	@mkdir -p $(@D)
+	@echo "[AS] $<"
+	$(CC) $(CFLAGS) -c $< -o $@
+
+obj/%.o: src/%.S
+	@mkdir -p $(@D)
+	@echo "[AS] $<"
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(ISO_IMG): $(OUTPUT) limine

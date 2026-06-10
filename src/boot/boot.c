@@ -55,8 +55,9 @@ static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARK
 #define MAX_MEMMAP_SIZE     64 // I mean its almost certainly not gonna have over 64 entries.
 
 
+extern void setup_gdt();
 // Hey future me! If you rename this function, change it in linker.lds in ENTRY() too!
-void kmain(void) {
+void startup(void) {
     // Ensure the bootloader actually understands our base revision (see spec).
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
         hcf();
@@ -127,6 +128,10 @@ void kmain(void) {
     itoa(tsc_hz, buffer);
     print(buffer);
     print("Hz!\n");
+
+    setup_gdt();
+
+    print("WE SETUP THE GDT!\n");
     // We're done, just hang...
     hcf();
 }
