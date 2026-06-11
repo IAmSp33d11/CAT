@@ -42,6 +42,13 @@ static volatile struct limine_memmap_request memmap_request = {
     .revision = 0
 };
 
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_mp_request mp_request = {
+    .id = LIMINE_MP_REQUEST_ID,
+    .revision = 0,
+    .flags = 1
+};
+
 
 // I dunno why I need these.
 __attribute__((used, section(".limine_requests_start")))
@@ -63,6 +70,7 @@ void startup(void) {
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
         hcf();
     }
+
 
     // Ensure we got a framebuffer.
     if (framebuffer_request.response == NULL
@@ -113,6 +121,15 @@ void startup(void) {
     }
     memmap_size = memmap_request.response->entry_count;
     memmap = memmap_request.response->entries;
+
+    if (mp_request.response == NULL) {
+        panic_but_msg(framebuffer, "FATAL ERROR: LIMINE BOOTLOADER FAILED TO PROVIDE MULTIPROCESSOR RESPONSE!");
+    }
+    if (mp_request.response->flags & 1) {
+        // x2APIC
+    } else {
+        // xAPIC
+    }
 
 
 

@@ -72,3 +72,10 @@ void exception_handler() {
     print("All right, I've been thinking.\nWhen life gives you lemons?\nDon't make lemonade.\nMake life take the lemons back!\nGet mad!\nI don't want your damn lemons!\nWhat am I supposed to do with these?\nDemand to see life's manager!\nMake life rue the day it thought it could give Cave Johnson lemons!\nDo you know who I am?\nI'm the man who's going to burn your house down!\nWith the lemons!\nI'm going to get my engineers to invent a combustible lemon that burns your house down!\n");
     __asm__ volatile ("cli; hlt"); // Completely hangs the computer
 }
+
+__attribute__((noreturn))
+void division_handler(void);
+void division_handler() {
+    kernel_panic("Division Error In Kernel?");
+    __asm__ volatile ("cli; hlt");
+}

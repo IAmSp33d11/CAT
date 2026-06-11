@@ -56,4 +56,7 @@ void itoa_hex(uint32_t n, char s[]);
 void itoa(uint32_t n, char s[]);
 size_t strlen(const char* str);
 
+void colon_three();
+void kernel_panic(const char* msg);
+
 #endif
