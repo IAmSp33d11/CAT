@@ -50,10 +50,7 @@ isr_stub_%+%1:
 %macro div_stub 1
 isr_stub_%+%1:
     call division_handler
-1:
-    cli
-    hlt ; THE CPU IS TRAPPED FOREVER MWA HA HA HA HA
-    jmp 1
+    iretq
 %endmacro
 
 extern kernel_panic

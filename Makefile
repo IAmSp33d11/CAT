@@ -23,7 +23,7 @@ OBJS     := $(patsubst src/%.c,obj/%.o,$(SRCS_C)) \
             $(patsubst src/%.s,obj/%.o,$(patsubst src/%.S,obj/%.o,$(SRCS_ASM))) \
             $(patsubst src/%.asm,obj/%.o,$(SRCS_NASM))
 
-all: $(OUTPUT)
+all: clean $(OUTPUT)
 
 $(OUTPUT): $(OBJS)
 	@mkdir -p bin

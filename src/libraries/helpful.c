@@ -214,9 +214,9 @@ size_t strlen(const char* str)
 }
 
 
-void itoa(uint32_t n, char s[])
+void itoa(uint64_t n, char s[])
 {
-    uint32_t i;
+    uint64_t i;
 
     i = 0;
     do {
@@ -226,11 +226,11 @@ void itoa(uint32_t n, char s[])
     reverse(s);
 }
 
-void itoa_hex(uint32_t n, char s[]) {
-    uint32_t i;
+void itoa_hex(uint64_t n, char s[]) {
+    uint64_t i;
     i = 0;
     do {
-        int digit = n % 16;
+        long digit = n % 16;
         if (digit < 10)
             s[i++] = digit + '0';
         else

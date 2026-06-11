@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <limine.h>
 #include "helpful.h"
+#include "physmem.h"
 
 
 __attribute__((used, section(".limine_requests")))
@@ -59,9 +60,6 @@ static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_
 __attribute__((used, section(".limine_requests_end")))
 static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARKER;
 
-#define MAX_MEMMAP_SIZE     64 // I mean its almost certainly not gonna have over 64 entries.
-
-
 extern void setup_gdt(void);
 extern void idt_init(void);
 // Hey future me! If you rename this function, change it in linker.lds in ENTRY() too!
@@ -114,13 +112,11 @@ void startup(void) {
         panic(framebuffer);
     }
 
-    uint64_t memmap_size = 0;
-    struct limine_memmap_entry **memmap;
+    struct limine_memmap_response *memmap;
     if (memmap_request.response == NULL) {
         panic_but_msg(framebuffer, "FATAL ERROR: FAILED TO FETCH MEMMAP FROM LIMINE BOOTLOADER!");
     }
-    memmap_size = memmap_request.response->entry_count;
-    memmap = memmap_request.response->entries;
+    memmap = memmap_request.response;
 
     if (mp_request.response == NULL) {
         panic_but_msg(framebuffer, "FATAL ERROR: LIMINE BOOTLOADER FAILED TO PROVIDE MULTIPROCESSOR RESPONSE!");
@@ -138,7 +134,7 @@ void startup(void) {
     }
     print("Successfully booted into the kernel!\n");
     char buffer[128];
-    itoa(memmap_size, buffer);
+    itoa(memmap->entry_count, buffer);
     print("We have ");
     print(buffer);
     print(" entries in the memory map!\n");
@@ -155,8 +151,15 @@ void startup(void) {
 
     print("WE SETUP THE IDT!\n");
 
-    __asm__ volatile ("int $0x00"); 
-    
+    itoa(get_usable_ram_size(memmap), buffer);
+    print("We have ");
+    print(buffer);
+    print(" bytes of usable RAM!\n");
+
+    itoa(get_ram_size(memmap), buffer);
+    print("We have ");
+    print(buffer);
+    print(" bytes of total RAM!\n");
 
     // We're done, just hang...
     hcf();
