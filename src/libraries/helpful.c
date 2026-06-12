@@ -240,6 +240,44 @@ void itoa_hex(uint64_t n, char s[]) {
     reverse(s);
 }
 
+void sitoa(int64_t n, char s[]) {
+    int64_t i, sign;
+
+    if ((sign = n) < 0)
+        n = -n;
+    i = 0;
+    do { 
+        s[i++] = n % 10 + '0';
+    } while ((n /= 10) > 0);
+    if (sign < 0)
+        s[i++] = '-';
+    s[i] = '\0';
+    reverse(s);
+}
+
+void sitoa_hex(int64_t n, char s[]) {
+    int64_t i, sign;
+
+    if ((sign = n) < 0)
+        n = -n;
+    i = 0;
+    do { 
+        long digit = n % 16;
+        if (digit < 10)
+            s[i++] = digit + '0';
+        else
+            s[i++] = digit - 10 + 'A';
+    } while ((n /= 10) > 0);
+    if (sign < 0)
+        s[i++] = '-';
+    s[i] = '\0';
+    reverse(s);
+}
+
+
+
+
+
 void reverse(char s[])
 {
     int i, j;
@@ -283,4 +321,14 @@ void kernel_panic(const char* msg) {
     print("\n");
     colon_three();
     hcf();
+}
+
+int32_t abs(int32_t a)
+{
+	return a>0 ? a : -a;
+}
+
+int64_t labs(int64_t a)
+{
+	return a>0 ? a : -a;
 }

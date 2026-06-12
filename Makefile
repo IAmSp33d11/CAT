@@ -83,7 +83,7 @@ limine:
 
 .PHONY: run
 run: $(ISO_IMG)
-	@echo "[LAUNCH] Initializing CAT core inside QEMU..."
+	@echo "[LAUNCH] Initializing CAT microkernel inside QEMU..."
 	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -serial stdio -cpu host,host-phys-bits=on -enable-kvm
 
 .PHONY: clean

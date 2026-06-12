@@ -59,4 +59,12 @@ size_t strlen(const char* str);
 void colon_three();
 void kernel_panic(const char* msg);
 
+void sitoa(int64_t n, char s[]);
+void sitoa_hex(int64_t n, char s[]);
+
+int32_t abs(int32_t a);
+int64_t labs(int64_t a);
+
+
+
 #endif

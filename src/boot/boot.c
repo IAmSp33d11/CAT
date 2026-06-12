@@ -161,22 +161,11 @@ void startup(void) {
     print(buffer);
     print(" bytes of total RAM!\n");
 
-
-    print("--- RAW MEMORY MAP DUMP ---\n");
-for (size_t i = 0; i < memmap->entry_count; i++) {
-    char b_buf[32], l_buf[32], t_buf[32];
-    
-    itoa(memmap->entries[i]->base, b_buf);
-    itoa(memmap->entries[i]->length, l_buf);
-    itoa(memmap->entries[i]->type, t_buf);
-    
-    print("Entry ");
-    // Reuse a small buffer or print piece by piece
-    print(b_buf); print(" | Length: ");
-    print(l_buf); print(" | Type: ");
-    print(t_buf); print("\n");
-}
-print("---------------------------\n");
+    uint64_t* bitmap = place_bitmap(memmap, hhdm);
+    itoa_hex(((uint64_t) bitmap) - hhdm, buffer);
+    print("The bitmap is located at : 0x");
+    print(buffer);
+    print("\n");
 
     // We're done, just hang...
     hcf();
