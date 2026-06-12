@@ -167,6 +167,10 @@ void startup(void) {
     print(buffer);
     print("\n");
 
+    setup_bitmap(memmap, bitmap, hhdm);
+
+    print("Our bitmap is done!");
+
     // We're done, just hang...
     hcf();
 }

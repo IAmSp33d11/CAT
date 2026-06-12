@@ -38,7 +38,7 @@ uint64_t get_bitmap_size(struct limine_memmap_response *memmap) {
 }
 
 uint64_t* place_bitmap(struct limine_memmap_response *memmap, uint64_t hhdm_offset) {
-    uint64_t bitmap_size = get_bitmap_size(memmap);
+    uint64_t bitmap_size = get_bitmap_size(memmap) * 4096;
     int best_fit_idx = -1; // It must fit the best.
     uint64_t best_fit_len = -1;
     for (size_t i = 0; i < memmap->entry_count; i++) {
@@ -73,6 +73,43 @@ uint64_t* place_bitmap(struct limine_memmap_response *memmap, uint64_t hhdm_offs
 
     return (uint64_t*)bitmap_virtual_ptr;
 }
+
+void setup_bitmap(struct limine_memmap_response *memmap, uint64_t* bitmap, uint64_t hhdm_offset) {
+    uint8_t* easier_bitmap = (uint8_t*) bitmap;
+
+    for (size_t i = 0; i < memmap->entry_count; i++) {
+        struct limine_memmap_entry *entry = memmap->entries[i];
+
+        if (entry->type == LIMINE_MEMMAP_USABLE) {
+            uint64_t start_page = entry->base / 4096;
+            uint64_t total_pages = entry->length / 4096;
+            uint64_t end_page = start_page + total_pages;
+
+            for (uint64_t page = start_page; page < end_page; page++) {
+                uint64_t byte_idx = page / 8;
+                uint64_t bit_idx = page % 8;
+
+
+                easier_bitmap[byte_idx] &= ~(1 << bit_idx);
+            }
+        }
+    }
+    // S.O.B.
+    // SAVE OUR BITMAP
+    uint64_t base = ((uint64_t)bitmap) - hhdm_offset;
+    uint64_t bitmap_size = get_bitmap_size(memmap) * 4096;
+    uint64_t bitmap_start_page = base / 4096;
+    uint64_t bitmap_page_count = (bitmap_size + 4095) / 4096; 
+    uint64_t bitmap_end_page = bitmap_start_page + bitmap_page_count;
+
+    for (uint64_t page = bitmap_start_page; page < bitmap_end_page; page++) {
+        uint64_t byte_idx = page / 8;
+        uint64_t bit_idx = page % 8;
+        easier_bitmap[byte_idx] |= (1 << bit_idx);
+    }
+}
+
+
 
 // # Most useless comment lol
 //
