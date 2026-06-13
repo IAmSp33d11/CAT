@@ -62,12 +62,15 @@ static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARK
 
 extern void setup_gdt(void);
 extern void idt_init(void);
+extern void enable_SSE(void);
 // Hey future me! If you rename this function, change it in linker.lds in ENTRY() too!
 void startup(void) {
     // Ensure the bootloader actually understands our base revision (see spec).
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
         hcf();
     }
+
+    enable_SSE();
 
 
     // Ensure we got a framebuffer.
@@ -112,6 +115,7 @@ void startup(void) {
         panic(framebuffer);
     }
 
+
     struct limine_memmap_response *memmap;
     if (memmap_request.response == NULL) {
         panic_but_msg(framebuffer, "FATAL ERROR: FAILED TO FETCH MEMMAP FROM LIMINE BOOTLOADER!");
@@ -151,15 +155,15 @@ void startup(void) {
 
     print("WE SETUP THE IDT!\n");
 
-    itoa(get_usable_ram_size(memmap), buffer);
+    dtoa(bytes_to_mib(get_usable_ram_size(memmap)), 2, buffer);
     print("We have ");
     print(buffer);
-    print(" bytes of usable RAM!\n");
+    print(" MiB of usable RAM!\n");
 
-    itoa(get_ram_size(memmap), buffer);
+    dtoa(bytes_to_mib(get_ram_size(memmap)), 2, buffer);
     print("We have ");
     print(buffer);
-    print(" bytes of total RAM!\n");
+    print(" MiB of total RAM!\n");
 
     uint64_t* bitmap = place_bitmap(memmap, hhdm);
     itoa_hex(((uint64_t) bitmap) - hhdm, buffer);
@@ -169,7 +173,9 @@ void startup(void) {
 
     setup_bitmap(memmap, bitmap, hhdm);
 
-    print("Our bitmap is done!");
+    print("Our bitmap is done!\n");
+
+    
 
     // We're done, just hang...
     hcf();

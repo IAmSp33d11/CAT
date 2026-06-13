@@ -7,7 +7,7 @@ ISO_IMG := out/cat.iso
 CFLAGS  := -Wall -Wextra -O2 -std=c11 -ffreestanding \
            -fno-stack-protector -fno-stack-check -fno-lto -fno-pic -fno-pie \
            -m64 -march=x86-64 -mabi=sysv \
-           -mno-80387 -mno-mmx -mno-sse -mno-sse2 -mno-red-zone \
+           -mno-red-zone \
            -mcmodel=kernel -Isrc/include
 
 NASMFLAGS := -f elf64

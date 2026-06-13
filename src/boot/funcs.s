@@ -28,3 +28,18 @@ reloadSegments:
     mov %ax, %gs
     mov %ax, %ss
     ret
+
+.global enable_SSE
+.type enable_SSE, @function
+enable_SSE:
+# void enable_SSE(void);
+mov %cr0, %rax
+    and $0xFFFFFFFFFFFFFFFB, %rax
+    or  $0x2, %rax
+    mov %rax, %cr0
+
+    mov %cr4, %rax
+    or  $0x600, %rax
+    mov %rax, %cr4
+
+    ret

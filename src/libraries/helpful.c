@@ -274,6 +274,43 @@ void sitoa_hex(int64_t n, char s[]) {
     reverse(s);
 }
 
+// Ironically this function was drain bamaged for a little while
+void dtoa(double d, int precision, char *str)
+{
+    int     int_part;
+    size_t  i, len;
+    int     decimals;
+
+    int_part = (int)d;
+    itoa(int_part, str);
+    
+    i = strlen(str);
+    
+    d -= (double)int_part;
+    str[i] = '.';
+    i++;
+    
+    decimals = 0;
+    while (decimals < precision)
+    {
+        d *= 10;
+        int_part = (int)d;
+        str[i] = int_part + '0';
+        i++;
+        decimals++;
+        d -= (double)int_part;
+    }
+    str[i] = '\0';
+}
+
+
+
+double bytes_to_mib(uint64_t bytes) {
+    double kib = bytes / 1024.0;
+    double mib = kib / 1024.0;
+    return mib;
+}
+
 
 
 

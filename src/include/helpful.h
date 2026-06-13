@@ -64,7 +64,8 @@ void sitoa_hex(int64_t n, char s[]);
 
 int32_t abs(int32_t a);
 int64_t labs(int64_t a);
-
+void dtoa(double d, int precision, char *str);
+double bytes_to_mib(uint64_t bytes);
 
 
 #endif
