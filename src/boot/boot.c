@@ -4,7 +4,7 @@
 #include <limine.h>
 #include "helpful.h"
 #include "physmem.h"
-
+#include "virtmem.h"
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(6);
@@ -138,23 +138,6 @@ void startup(void) {
     }
     print("Successfully booted into the kernel!\n");
     char buffer[128];
-    itoa(memmap->entry_count, buffer);
-    print("We have ");
-    print(buffer);
-    print(" entries in the memory map!\n");
-    print("The TSC's clock speed is ");
-    itoa(tsc_hz, buffer);
-    print(buffer);
-    print("Hz!\n");
-
-    setup_gdt();
-
-    print("WE SETUP THE GDT!\n");
-
-    idt_init();
-
-    print("WE SETUP THE IDT!\n");
-
     dtoa(bytes_to_mib(get_usable_ram_size(memmap)), 2, buffer);
     print("We have ");
     print(buffer);
@@ -206,6 +189,27 @@ void startup(void) {
     print("After: ");
     print(buffer);
     print("\n");
+
+    print("The CR3 register is pointing to: 0x");
+    itoa_hex(get_cr3(), buffer);
+    print(buffer);
+    print("\n");
+
+    uint64_t* new_pd = clone_pd(hhdm);
+    print("Cloned the page directory!\nIt is located at: 0x");
+    itoa_hex((uint64_t) new_pd - hhdm, buffer);
+    print(buffer);
+    print("\n");
+
+    switch_pd(new_pd, hhdm);
+    print("Successfully switched page directory to a clone!\n");
+    
+    print("The CR3 register is pointing to: 0x");
+    itoa_hex(get_cr3(), buffer);
+    print(buffer);
+    print("\n");
+
+
 
     // We're done, just hang...
     hcf();
