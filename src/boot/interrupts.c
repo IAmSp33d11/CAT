@@ -64,13 +64,68 @@ void idt_init() {
 // Everything above this we do not touchy. Like ever.
 // If you touch this I will personally burn your house down with lemons
 // Everything below this is just interrupts.
+typedef struct {
+    uint64_t r15;
+    uint64_t r14;
+    uint64_t r13;
+    uint64_t r12;
+    uint64_t r11;
+    uint64_t r10;
+    uint64_t r9;
+    uint64_t r8;
+    uint64_t rbp;
+    uint64_t rdi;
+    uint64_t rsi;
+    uint64_t rdx;
+    uint64_t rcx;
+    uint64_t rbx;
+    uint64_t rax;
+    
+    uint64_t interrupt_number;
+    uint64_t error_code;
+    
+    uint64_t rip;
+    uint64_t cs;
+    uint64_t rflags;
+    uint64_t rsp;
+    uint64_t ss;
+} __attribute__((packed)) registers_t;
+
+
 
 __attribute__((noreturn))
-void exception_handler(void);
-void exception_handler() {
+void exception_handler(registers_t* regs) {
     clear_screen();
+    
+    char buf[128];
+    print("CRASHED AT VECTOR: ");
+    itoa(regs->interrupt_number, buf);
+    print(buf);
+    print("\n");
+
+    print("ERROR CODE: 0x");
+    itoa_hex(regs->error_code, buf);
+    print(buf);
+    print("\n");
+
+    print("FAULTING RIP: 0x");
+    itoa_hex(regs->rip, buf);
+    print(buf);
+    print("\n");
+
+    // If it's a Page Fault (Vector 14), read CR2 to find the exact offending address
+    if (regs->interrupt_number == 14) {
+        uint64_t cr2_val;
+        __asm__ volatile("mov %%cr2, %0" : "=r"(cr2_val));
+        print("CR2 VALUE: 0x");
+        itoa_hex(cr2_val, buf);
+        print(buf);
+        print("\n");
+    }
+
     print("All right, I've been thinking.\nWhen life gives you lemons?\nDon't make lemonade.\nMake life take the lemons back!\nGet mad!\nI don't want your damn lemons!\nWhat am I supposed to do with these?\nDemand to see life's manager!\nMake life rue the day it thought it could give Cave Johnson lemons!\nDo you know who I am?\nI'm the man who's going to burn your house down!\nWith the lemons!\nI'm going to get my engineers to invent a combustible lemon that burns your house down!\n");
-    __asm__ volatile ("cli; hlt"); // Completely hangs the computer
+
+    __asm__ volatile ("cli; hlt");
 }
 
 __attribute__((noreturn))

@@ -38,12 +38,25 @@ push rax
 
 %macro isr_err_stub 1
 isr_stub_%+%1:
+    push qword %1
+    pushaq
+    mov rdi, rsp
+    cld
     call exception_handler
+    popaq
+    add rsp, 16
     iretq
 %endmacro
 %macro isr_no_err_stub 1
 isr_stub_%+%1:
+    push qword 0
+    push qword %1
+    pushaq
+    mov rdi, rsp
+    cld
     call exception_handler
+    popaq
+    add rsp, 16
     iretq
 %endmacro
 

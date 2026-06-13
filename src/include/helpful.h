@@ -67,5 +67,6 @@ int64_t labs(int64_t a);
 void dtoa(double d, int precision, char *str);
 double bytes_to_mib(uint64_t bytes);
 
+void sleep_ms(uint64_t ms, uint64_t tsc_hz);
 
 #endif

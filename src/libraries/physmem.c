@@ -6,17 +6,6 @@
 #include "physmem.h"
 
 
-uint64_t get_usable_ram_size(struct limine_memmap_response *memmap) {
-    uint64_t usable_ram = 0;
-    for (size_t i = 0; i < memmap->entry_count; i++) {
-        if (memmap->entries[i]->type == LIMINE_MEMMAP_USABLE) {
-            usable_ram += memmap->entries[i]->length;
-        }
-    }
-    return usable_ram;
-}
-
-
 uint64_t get_ram_size(struct limine_memmap_response *memmap) {
     uint64_t highest_base = memmap->entries[0]->base;
     uint64_t length_with_highest_base_or_some_shit_lol = memmap->entries[0]->length;
@@ -36,6 +25,42 @@ uint64_t get_bitmap_size(struct limine_memmap_response *memmap) {
     uint64_t bitmap_bytes = (total_pages + 7) / 8;
     return (bitmap_bytes + 4095) / 4096;
 }
+
+uint64_t get_usable_ram_size(struct limine_memmap_response *memmap) {
+    uint64_t usable_ram = 0;
+    for (size_t i = 0; i < memmap->entry_count; i++) {
+        if (memmap->entries[i]->type == LIMINE_MEMMAP_USABLE) {
+            usable_ram += memmap->entries[i]->length;
+        }
+    }
+    return usable_ram;
+}
+
+uint64_t get_free_ram_size(uint64_t* bitmap, struct limine_memmap_response *memmap) {
+    uint64_t total = 0; // Total amount of free ram we found
+    uint64_t bitmap_size = (get_bitmap_size(memmap) * 4096) / 8; // Get the amount of 8 byte chunks total
+    for (size_t i = 0; i < bitmap_size; i++) {
+        if (bitmap[i] == 0) {
+            total += 4096 * 64;
+        } else if (bitmap[i] == -1) {
+            continue; // Skip it, its not worth wasting cycles on.
+        } else { // Okay so its interesting, we gotta find out what it actually is
+            for (int j = 0; j < 64; j++) {
+                uint8_t temp = (bitmap[i] >> j) & 0b1;
+                if (!temp) 
+                    total += 4096;
+            }
+        }
+    }
+    return total;
+}
+
+uint64_t get_used_ram_size(uint64_t* bitmap, struct limine_memmap_response *memmap) {
+    return get_usable_ram_size(memmap) - get_free_ram_size(bitmap, memmap);
+}
+
+
+
 
 uint64_t* place_bitmap(struct limine_memmap_response *memmap, uint64_t hhdm_offset) {
     uint64_t bitmap_size = get_bitmap_size(memmap) * 4096;
@@ -74,6 +99,11 @@ uint64_t* place_bitmap(struct limine_memmap_response *memmap, uint64_t hhdm_offs
     return (uint64_t*)bitmap_virtual_ptr;
 }
 
+
+static uint64_t* the_bitmap;
+static uint64_t the_bitmap_size;
+static uint64_t the_hhdm_offset;
+static struct limine_memmap_response *the_memmap;
 void setup_bitmap(struct limine_memmap_response *memmap, uint64_t* bitmap, uint64_t hhdm_offset) {
     uint8_t* easier_bitmap = (uint8_t*) bitmap;
 
@@ -107,8 +137,60 @@ void setup_bitmap(struct limine_memmap_response *memmap, uint64_t* bitmap, uint6
         uint64_t bit_idx = page % 8;
         easier_bitmap[byte_idx] |= (1 << bit_idx);
     }
+    the_bitmap = bitmap;
+    the_bitmap_size = bitmap_size;
+    the_hhdm_offset = hhdm_offset;
+    the_memmap = memmap;
 }
 
+// As a child, you would wait and watch from far away
+// But you always knew that'd you'll be
+// The one that work while they all play
+// In youth, you'd lay awake at night and scheme
+// Of all the things that you would change
+// But it was just a dream
+
+
+// Allocates 1, 4096 byte chunk of memory.
+void* alloc_page() {
+    static uint64_t last_free_idx = 0;
+    uint64_t* bitmap = the_bitmap; // Idc if its pointless and wasting some ram. Fight me.
+    uint64_t bitmap_size = the_bitmap_size / 8; // It gets freed up on function return anyways so who cares?
+    uint64_t hhdm_offset = the_hhdm_offset;
+    struct limine_memmap_response *memmap = the_memmap;
+    uint8_t times_looped_around = 0;
+
+    size_t i = last_free_idx;
+    while (true) {
+        if (i >= bitmap_size) {
+            if (times_looped_around == 0) {
+                times_looped_around++;
+                i = 0;
+            } else {
+                kernel_panic("FATAL ERROR: WE RAN OUTTA RAM.\n HOW COULD YOU LET THIS HAPPEN?!");
+            }
+        }
+
+        if (bitmap[i] != -1) { // Hey we can use that one!
+            for (int j = 0; j < 64; j++) {
+                if (((bitmap[i] >> j) & 1) == 0) { 
+                    bitmap[i] |= (1ULL << j); // YOINK ITS OUR RAM NOW!
+                    last_free_idx = i;
+                    return (void*)((((i * 64) + j) * 4096) + hhdm_offset);
+                }
+            }
+        }
+        i++;
+    }
+    kernel_panic("FATAL ERROR: HOW DID YOU ACCOMPLISH TO GET HERE?!\n SCREENSHOT TS THIS SHOULDN'T BE POSSIBLE!"); // HOW DID YOU GET OUT HERE?!?!
+}
+
+void free_page(void* address) {
+    uint64_t offset = (((uint64_t) address) - the_hhdm_offset) >> 12;
+    uint64_t idx = offset / 64;
+    uint8_t bit_pos = offset % 64;
+    the_bitmap[idx] &= ~(1ULL << bit_pos);
+}
 
 
 // # Most useless comment lol

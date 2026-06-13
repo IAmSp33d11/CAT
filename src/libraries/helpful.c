@@ -369,3 +369,18 @@ int64_t labs(int64_t a)
 {
 	return a>0 ? a : -a;
 }
+
+
+void sleep_ms(uint64_t ms, uint64_t tsc_hz) {
+    uint64_t cpu_ticks_per_ms = tsc_hz / 1000;
+    uint64_t start_cycles = rdtsc();
+    uint64_t target_cycles = start_cycles + (ms * cpu_ticks_per_ms);
+
+    if (target_cycles < start_cycles) { 
+        kernel_panic("FATAL PANIC: YOU BROKE TIME.\nWE DUNNO WHEN IT IS.\nHAS THIS SYSTEM BEEN RUNNING FOR MILLENIA?!?!");
+    }
+
+    while (rdtsc() < target_cycles) {
+        __asm__ volatile("pause");
+    }
+}

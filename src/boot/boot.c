@@ -175,7 +175,37 @@ void startup(void) {
 
     print("Our bitmap is done!\n");
 
-    
+    dtoa(bytes_to_mib(get_free_ram_size(bitmap, memmap)), 2, buffer);
+    print("We have ");
+    print(buffer);
+    print(" MiB of free RAM!\n");
+
+    dtoa(bytes_to_mib(get_used_ram_size(bitmap, memmap)), 2, buffer);
+    print("We are using ");
+    print(buffer);
+    print(" MiB of RAM!\n");
+
+    print("Memory Allocation Test\n");
+    dtoa(bytes_to_mib(get_used_ram_size(bitmap, memmap)), 7, buffer);
+    print("Before: ");
+    print(buffer);
+    print("\n");
+
+    void* temp[100];
+    for (int i = 0; i < 100; i++) {
+        temp[i] = alloc_page();
+    }
+    dtoa(bytes_to_mib(get_used_ram_size(bitmap, memmap)), 7, buffer);
+    print("During: ");
+    print(buffer);
+    print("\n");
+    for (int i = 0; i < 100; i++) {
+        free_page(temp[i]);
+    }
+    dtoa(bytes_to_mib(get_used_ram_size(bitmap, memmap)), 7, buffer);
+    print("After: ");
+    print(buffer);
+    print("\n");
 
     // We're done, just hang...
     hcf();
