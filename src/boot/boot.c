@@ -6,6 +6,7 @@
 #include "physmem.h"
 #include "virtmem.h"
 #include "asm.h"
+#include "acpi.h"
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(6);
@@ -60,6 +61,12 @@ static volatile struct limine_executable_file_request kernel_request = {
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_executable_address_request addr_request = {
     .id = LIMINE_EXECUTABLE_ADDRESS_REQUEST_ID,
+    .revision = 0
+};
+
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_rsdp_request rsdp_request = {
+    .id = LIMINE_RSDP_REQUEST_ID,
     .revision = 0
 };
 
@@ -145,11 +152,11 @@ void startup(void) {
     if (mp_request.response == NULL) {
         panic_but_msg(framebuffer, "FATAL ERROR: LIMINE BOOTLOADER FAILED TO PROVIDE MULTIPROCESSOR RESPONSE!");
     }
-    if (mp_request.response->flags & 1) {
-        // x2APIC
-    } else {
-        // xAPIC
+    if (rsdp_request.response == NULL) {
+        panic_but_msg(framebuffer, "FATAL ERROR: LIMINE BOOTLOADER FUCKING HATES US AND REFUSES TO PROVIDE RSDP RESPONSE!");
     }
+
+    void* rsdp = rsdp_request.response->address;
 
 
 
@@ -267,11 +274,19 @@ void startup(void) {
     print(buffer);
     print("\n");
     
+    validate_rsdp(rsdp);
+    print("The RSDP is valid!\n");
+
+    void* madt = find_MADT(rsdp, hhdm);
+    print("We found da MADT!\n");
 
 
 
 
 
+
+
+    print("We are done!\n");
     // We're done, just hang...
     hcf();
 }

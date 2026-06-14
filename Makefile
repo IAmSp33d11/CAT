@@ -3,6 +3,7 @@ LD := x86_64-elf-ld
 NASM := nasm
 OUTPUT := bin/cat_kernel.elf
 ISO_IMG := out/cat.iso
+BIOS := /usr/share/edk2/x64/OVMF.4m.fd # Use a UEFI OVMF image preferably. 
 
 CFLAGS  := -Wall -Wextra -O2 -std=c11 -ffreestanding \
            -fno-stack-protector -fno-stack-check -fno-lto -fno-pic -fno-pie \
@@ -76,15 +77,17 @@ $(ISO_IMG): $(OUTPUT) limine
 	@./limine/limine bios-install $(ISO_IMG) 2>/dev/null
 
 limine:
-	@rm -rf limine limine-binary    
-	@curl -L https://github.com/Limine-Bootloader/Limine/releases/latest/download/limine-binary.tar.gz | gunzip | tar -xf -
-	@mv limine-binary/ limine
-	$(MAKE) -C limine
+	@if [ ! -d "limine" ]; then \
+		echo "[FETCH] Pulling Limine bootloader binaries..."; \
+		curl -L https://github.com/Limine-Bootloader/Limine/releases/latest/download/limine-binary.tar.gz | gunzip | tar -xf -; \
+		mv limine-binary/ limine; \
+		$(MAKE) -C limine; \
+	fi
 
 .PHONY: run
 run: $(ISO_IMG)
 	@echo "[LAUNCH] Initializing CAT microkernel inside QEMU..."
-	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -serial stdio -cpu host,host-phys-bits=on -enable-kvm
+	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -bios $(BIOS) -serial stdio -cpu host,host-phys-bits=on -enable-kvm
 
 .PHONY: clean
 clean:

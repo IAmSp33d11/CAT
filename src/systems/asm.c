@@ -8,6 +8,3 @@ void hcf(void) {
     __asm__ volatile("cli; hlt;");
 }
 
-void rdmsr(uint32_t msr, uint32_t *low, uint32_t *high) {
-    __asm__ __volatile__("rdmsr" : "=a"(*low), "=d"(*high) : "c"(msr));
-}
