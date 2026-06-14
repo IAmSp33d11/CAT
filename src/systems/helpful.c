@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <limine.h>
 #include "helpful.h"
+#include "asm.h"
 
 struct limine_framebuffer *framebuffer = NULL;
 uint8_t *font_buffer = NULL;
@@ -102,10 +103,7 @@ uint64_t calibrate_tsc(void) {
     return tsc_hz;
 }
 
-// Halt and catch fire function.
-void hcf(void) {
-    __asm__ volatile("cli; hlt;");
-}
+
 
 void panic(struct limine_framebuffer *framebuffer) {
     for (size_t y = 0; y < framebuffer->height; y++) {

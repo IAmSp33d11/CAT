@@ -5,6 +5,7 @@
 #include "helpful.h"
 #include "physmem.h"
 #include "virtmem.h"
+#include "asm.h"
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(6);
@@ -258,7 +259,6 @@ void startup(void) {
     print("\n");
 
     print("Attempting to switch to new page directory\n");
-    sleep_ms(2000, tsc_hz);
     switch_pd(new_pd, hhdm);
     print("We somehow didn't die!\n");
 

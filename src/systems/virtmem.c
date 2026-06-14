@@ -59,7 +59,7 @@ uint64_t get_pml4_index(void* virtual_address) {
     return ((uint64_t)virtual_address >> 39) & 0x1FF;
 }
 
-void map_page(uint64_t* pml4_virt, uint64_t virt_addr, uint64_t phys_addr, uint64_t flags, uint64_t hhdm_offset) {
+void map_page(uint64_t* pml4_virt, uint64_t virt_addr, uint64_t phys_addr, uint64_t flags, uint64_t hhdm_offset, bool is_2mb) {
     uint64_t addr_mask = get_phys_addr_mask();
 
     uint64_t pml4_idx = (virt_addr >> 39) & 0x1FF;
@@ -83,6 +83,12 @@ void map_page(uint64_t* pml4_virt, uint64_t virt_addr, uint64_t phys_addr, uint6
     uint64_t* pd_virt = (uint64_t*)( (pdpt_virt[pdpt_idx] & addr_mask) + hhdm_offset );
 
     uint64_t pd_idx = (virt_addr >> 21) & 0x1FF;
+
+    if (is_2mb) {
+        pd_virt[pd_idx] = (phys_addr & addr_mask) | flags | 0x80;
+        return;
+    }
+
     if (!(pd_virt[pd_idx] & 0x1)) {
         uint64_t* new_table_virt = (uint64_t*)alloc_page();
         memset(new_table_virt, 0, 4096);
@@ -107,14 +113,14 @@ uint64_t* make_pd(uint64_t* kernel_virt_addr, uint64_t kernel_phys_addr, uint64_
     uint64_t phys_addr = kernel_phys_addr;
     uint64_t virt_addr = (uint64_t) kernel_virt_addr;
     for (int i = 0; i < kernel_size_in_pages; i++) {
-        map_page(new_pml4, virt_addr, phys_addr, 0x3, hhdm_offset);
+        map_page(new_pml4, virt_addr, phys_addr, 0x3, hhdm_offset, false);
         phys_addr += 4096;
         virt_addr += 4096;
     }
 
     uint64_t total_memory_limit = get_mem_size(memmap);
-    for (uint64_t identity = 0; identity < total_memory_limit; identity += 4096) {
-        map_page(new_pml4, hhdm_offset + identity, identity, 0x3, hhdm_offset);
+    for (uint64_t i = 0; i < total_memory_limit; i += 0x200000) {
+        map_page(new_pml4, hhdm_offset + i, i, 0x3, hhdm_offset, true);
     }
 
     return new_pml4;
