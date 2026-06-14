@@ -9,5 +9,6 @@ uint64_t get_free_ram_size(uint64_t* bitmap, struct limine_memmap_response *memm
 uint64_t get_used_ram_size(uint64_t* bitmap, struct limine_memmap_response *memmap);
 void* alloc_page();
 void free_page(void* address);
+uint64_t get_mem_size(struct limine_memmap_response *memmap);
 
 #endif

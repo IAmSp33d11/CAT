@@ -50,6 +50,19 @@ static volatile struct limine_mp_request mp_request = {
     .flags = 1
 };
 
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_executable_file_request kernel_request = {
+    .id = LIMINE_EXECUTABLE_FILE_REQUEST_ID,
+    .revision = 0
+};
+
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_executable_address_request addr_request = {
+    .id = LIMINE_EXECUTABLE_ADDRESS_REQUEST_ID,
+    .revision = 0
+};
+
+
 
 // I dunno why I need these.
 __attribute__((used, section(".limine_requests_start")))
@@ -115,6 +128,12 @@ void startup(void) {
         panic(framebuffer);
     }
 
+    if (kernel_request.response == NULL || addr_request.response == NULL) {
+        panic_but_msg(framebuffer, "FATAL ERROR: FAILED TO GET KERNEL SIZE AND ADDRESS!");
+    }
+    uint64_t kernel_size = kernel_request.response->executable_file->size;
+    uint64_t* kernel_phys_addr = (uint64_t*) addr_request.response->physical_base; // Where in RAM we actually are
+    uint64_t* kernel_virt_addr = (uint64_t*) addr_request.response->virtual_base; // Where the bootloader loaded us
 
     struct limine_memmap_response *memmap;
     if (memmap_request.response == NULL) {
@@ -136,6 +155,10 @@ void startup(void) {
     if (tsc_hz == 0) {
         panic_but_msg(framebuffer, "FATAL ERROR: FAILED TO SYNCHRONIZE TSC!");
     }
+
+
+
+
     print("Successfully booted into the kernel!\n");
     char buffer[128];
     dtoa(bytes_to_mib(get_usable_ram_size(memmap)), 2, buffer);
@@ -143,16 +166,19 @@ void startup(void) {
     print(buffer);
     print(" MiB of usable RAM!\n");
 
+
     dtoa(bytes_to_mib(get_ram_size(memmap)), 2, buffer);
     print("We have ");
     print(buffer);
     print(" MiB of total RAM!\n");
+
 
     uint64_t* bitmap = place_bitmap(memmap, hhdm);
     itoa_hex(((uint64_t) bitmap) - hhdm, buffer);
     print("The bitmap is located at : 0x");
     print(buffer);
     print("\n");
+
 
     setup_bitmap(memmap, bitmap, hhdm);
 
@@ -190,6 +216,8 @@ void startup(void) {
     print(buffer);
     print("\n");
 
+
+
     print("The CR3 register is pointing to: 0x");
     itoa_hex(get_cr3(), buffer);
     print(buffer);
@@ -201,6 +229,9 @@ void startup(void) {
     print(buffer);
     print("\n");
 
+   
+
+
     switch_pd(new_pd, hhdm);
     print("Successfully switched page directory to a clone!\n");
     
@@ -208,6 +239,36 @@ void startup(void) {
     itoa_hex(get_cr3(), buffer);
     print(buffer);
     print("\n");
+
+    itoa_hex((uint64_t) kernel_phys_addr, buffer);
+    print("The kernel is loaded at : 0x");
+    print(buffer);
+    print("\n");
+
+    itoa(kernel_size, buffer);
+    print("And is: ");
+    print(buffer);
+    print(" bytes large!\n");
+
+
+    new_pd = make_pd(kernel_virt_addr, (uint64_t) kernel_phys_addr, kernel_size, hhdm, memmap);
+    print("We have a new Page Directory at: 0x");
+    itoa_hex((uint64_t) new_pd - hhdm, buffer);
+    print(buffer);
+    print("\n");
+
+    print("Attempting to switch to new page directory\n");
+    sleep_ms(2000, tsc_hz);
+    switch_pd(new_pd, hhdm);
+    print("We somehow didn't die!\n");
+
+    print("The CR3 register is pointing to: 0x");
+    itoa_hex(get_cr3(), buffer);
+    print(buffer);
+    print("\n");
+    
+
+
 
 
 

@@ -6,7 +6,7 @@
 #include "physmem.h"
 
 
-uint64_t get_ram_size(struct limine_memmap_response *memmap) {
+uint64_t get_mem_size(struct limine_memmap_response *memmap) {
     uint64_t highest_base = memmap->entries[0]->base;
     uint64_t length_with_highest_base_or_some_shit_lol = memmap->entries[0]->length;
     for (size_t i = 0; i < memmap->entry_count; i++) {
@@ -18,9 +18,22 @@ uint64_t get_ram_size(struct limine_memmap_response *memmap) {
     return highest_base + length_with_highest_base_or_some_shit_lol;
 }
 
+uint64_t get_ram_size(struct limine_memmap_response *memmap) {
+    uint64_t total_ram_counted_or_some_shit_i_dunno_wtf_lol_why_is_this_variable_name_so_long_i_dunno_dont_ask_me_but_its_too_long_wtf_its_unreadable = 0;
+    for (size_t i = 0; i < memmap->entry_count; i++) {
+        uint8_t type = memmap->entries[i]->type;
+            if (type == LIMINE_MEMMAP_USABLE || type == LIMINE_MEMMAP_ACPI_RECLAIMABLE || 
+            type == LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE || type == LIMINE_MEMMAP_EXECUTABLE_AND_MODULES
+            || type == LIMINE_MEMMAP_BAD_MEMORY) {
+                total_ram_counted_or_some_shit_i_dunno_wtf_lol_why_is_this_variable_name_so_long_i_dunno_dont_ask_me_but_its_too_long_wtf_its_unreadable += memmap->entries[i]->length;
+            }
+    }
+    return total_ram_counted_or_some_shit_i_dunno_wtf_lol_why_is_this_variable_name_so_long_i_dunno_dont_ask_me_but_its_too_long_wtf_its_unreadable;
+}
+
 // Returns it in page tables
 uint64_t get_bitmap_size(struct limine_memmap_response *memmap) {
-    uint64_t total_bytes = get_ram_size(memmap);
+    uint64_t total_bytes = get_mem_size(memmap);
     uint64_t total_pages = total_bytes / 4096;
     uint64_t bitmap_bytes = (total_pages + 7) / 8;
     return (bitmap_bytes + 4095) / 4096;
