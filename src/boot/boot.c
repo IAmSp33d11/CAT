@@ -2,11 +2,12 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <limine.h>
+#include "asm.h"
 #include "helpful.h"
 #include "physmem.h"
 #include "virtmem.h"
-#include "asm.h"
 #include "acpi.h"
+#include "apic.h"
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(6);
@@ -84,7 +85,7 @@ void startup(void) {
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
         hcf();
     }
-
+    
     enable_SSE();
 
 
@@ -264,6 +265,15 @@ void startup(void) {
     itoa_hex(get_cr3(), buffer);
     print(buffer);
     print("\n");
+
+    print("Setting up GDT\n");
+    setup_gdt();
+
+    // So I accidentally removed these D:
+
+    print("Setting up IDT\n");
+    idt_init();
+
     
     validate_rsdp(rsdp);
     print("The RSDP is valid!\n");
@@ -277,17 +287,33 @@ void startup(void) {
     print(" MiB of RAM!\n");
 
 
-    void* apic = find_APIC(rsdp, hhdm);
-    print("WE FOUND DA APIC!\n");
-    print("It is located at : 0x");
-    itoa_hex(((uint64_t) apic) - hhdm, buffer);
-    print(buffer);
-    print("\n");
+
+    uint64_t val =  rdmsr(0x1B);
+
+    // 2. Set Bit 11 (Enable APIC) and Bit 10 (x2APIC Mode)
+    val |= (1 << 11) | (1 << 10);
+
+    wrmsr(0x1B, val);
+
+    uint32_t lapic_timer = calibrate_lapic_timer();
 
 
+    // We have x2APIC if we are alive still.
+    wrmsr(0x80F, 0x100 | 0x2F);
+
+    wrmsr(0x808, 0);
+
+    wrmsr(0x83E, 0x03);
+
+    wrmsr(0x832, 0x20000 | 32);
+
+    wrmsr(0x838, lapic_timer);
+
+    __asm__ volatile("sti");
 
 
     print("We are done!\n");
-    // We're done, just hang...
-    hcf();
+
+    __asm__ volatile("sti");
+    while (1) {__asm__ volatile("hlt");}
 }

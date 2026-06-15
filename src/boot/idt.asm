@@ -66,6 +66,21 @@ isr_stub_%+%1:
     iretq
 %endmacro
 
+%macro tick_stub 1
+isr_stub_%+%1:
+    pushaq
+    cld
+    call tick
+    popaq
+    iretq
+%endmacro
+
+%macro spurious 1
+isr_stub_%+%1:
+    iretq
+%endmacro
+
+extern tick
 extern kernel_panic
 extern safe_panic
 extern division_handler
@@ -102,11 +117,27 @@ isr_no_err_stub 28
 isr_no_err_stub 29
 isr_err_stub    30
 isr_no_err_stub 31
+tick_stub 32
+isr_no_err_stub 33
+isr_no_err_stub 34
+isr_no_err_stub 35
+isr_no_err_stub 36
+isr_no_err_stub 37
+isr_no_err_stub 38
+isr_no_err_stub 39
+isr_no_err_stub 40
+isr_no_err_stub 41
+isr_no_err_stub 42
+isr_no_err_stub 43
+isr_no_err_stub 44
+isr_no_err_stub 45
+isr_no_err_stub 46
+spurious 47
 
 global isr_stub_table
 isr_stub_table:
 %assign i 0 
-%rep    32 
+%rep    48
     dq isr_stub_%+i ; use DQ instead if targeting 64-bit
 %assign i i+1 
 %endrep

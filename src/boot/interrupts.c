@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <limine.h>
 #include "helpful.h"
+#include "asm.h"
 
 // Yes, I got most of this from https://osdev.wiki/wiki/Interrupts_Tutorial.
 
@@ -39,7 +40,7 @@ void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags) {
     descriptor->reserved       = 0;
 }
 
-#define IDT_MAX_DESCRIPTORS 32
+#define IDT_MAX_DESCRIPTORS 48
 
 
 static bool vectors[IDT_MAX_DESCRIPTORS];
@@ -51,13 +52,12 @@ void idt_init() {
     idtr.base = (uintptr_t)&idt[0];
     idtr.limit = (uint16_t)sizeof(idt_entry_t) * IDT_MAX_DESCRIPTORS - 1;
 
-    for (uint8_t vector = 0; vector < 32; vector++) {
+    for (uint8_t vector = 0; vector < IDT_MAX_DESCRIPTORS; vector++) {
         idt_set_descriptor(vector, isr_stub_table[vector], 0x8E);
         vectors[vector] = true;
     }
 
     __asm__ volatile ("lidt %0" : : "m"(idtr)); // load the new IDT
-    __asm__ volatile ("sti"); // set the interrupt flag
 }
 
 
@@ -90,6 +90,7 @@ typedef struct {
     uint64_t rsp;
     uint64_t ss;
 } __attribute__((packed)) registers_t;
+
 
 
 
@@ -126,6 +127,18 @@ void exception_handler(registers_t* regs) {
     print("All right, I've been thinking.\nWhen life gives you lemons?\nDon't make lemonade.\nMake life take the lemons back!\nGet mad!\nI don't want your damn lemons!\nWhat am I supposed to do with these?\nDemand to see life's manager!\nMake life rue the day it thought it could give Cave Johnson lemons!\nDo you know who I am?\nI'm the man who's going to burn your house down!\nWith the lemons!\nI'm going to get my engineers to invent a combustible lemon that burns your house down!\n");
 
     __asm__ volatile ("cli; hlt");
+}
+
+void tick() {
+    print("We got a timer interrupt!\n");
+
+    __asm__ volatile(
+        "mov $0x80b, %%ecx\n\t"
+        "xor %%eax, %%eax\n\t"
+        "xor %%edx, %%edx\n\t"
+        "wrmsr"
+        : : : "rax", "rcx", "rdx"
+    );
 }
 
 __attribute__((noreturn))

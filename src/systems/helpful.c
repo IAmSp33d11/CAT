@@ -2,8 +2,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <limine.h>
-#include "helpful.h"
 #include "asm.h"
+#include "helpful.h"
 
 struct limine_framebuffer *framebuffer = NULL;
 uint8_t *font_buffer = NULL;
