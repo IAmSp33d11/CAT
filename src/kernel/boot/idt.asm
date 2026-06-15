@@ -80,6 +80,17 @@ isr_stub_%+%1:
     iretq
 %endmacro
 
+%macro test_stub 1
+isr_stub_%+%1:
+    pushaq
+    mov rdi, rax
+    mov rsi, rbx
+    call test
+    popaq
+    iretq
+%endmacro
+
+extern test
 extern tick
 extern kernel_panic
 extern safe_panic
@@ -118,7 +129,7 @@ isr_no_err_stub 29
 isr_err_stub    30
 isr_no_err_stub 31
 tick_stub 32
-isr_no_err_stub 33
+test_stub 33
 isr_no_err_stub 34
 isr_no_err_stub 35
 isr_no_err_stub 36

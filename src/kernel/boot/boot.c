@@ -76,6 +76,40 @@ static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_
 __attribute__((used, section(".limine_requests_end")))
 static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARKER;
 
+// Limine Stuff above
+// Testing space below
+
+extern void jump_to_usermode(uint64_t entry_point, uint64_t user_stack);
+extern void return_to_kernel(void);
+
+#define INIT_STACK_SIZE 2
+
+uint64_t saved_kernel_rsp = 0;
+uint64_t saved_kernel_rip = 0;
+
+void launch_init(void* init_addr, uint64_t init_size, uint64_t* pml4, uint64_t hhdm_offset) {
+    uint64_t init_size_in_pages = (init_size + 4095) >> 12;
+    uint64_t phys_addr = ((uint64_t) init_addr) - hhdm_offset;
+    for (size_t i = 0; i < init_size_in_pages; i++) {
+        map_page(pml4, 0x400000 + (i * 4096), phys_addr + (i * 4096), 0x7, hhdm_offset, false);
+    }
+
+    uint64_t user_stack_bottom = 0x200000;
+    for (size_t i = 0; i < INIT_STACK_SIZE; i++) {
+        uint64_t temp = (uint64_t) alloc_page();
+        map_page(pml4, user_stack_bottom + (i * 4096), temp - hhdm_offset, 0x7, hhdm_offset, false);
+    }
+
+    // FIX: Shift the initial RSP down into the valid, mapped page boundary
+    uint64_t user_stack_top = user_stack_bottom + (INIT_STACK_SIZE * 4096) - 8;
+
+    jump_to_usermode(0x400000, user_stack_top);
+}
+
+
+// Testing space above
+// Actual Boot stuff below
+
 extern void setup_gdt(void);
 extern void idt_init(void);
 extern void enable_SSE(void);
@@ -113,6 +147,8 @@ void startup(void) {
     }
 
     font_buffer = NULL;
+    uint8_t* init = NULL;
+    uint64_t init_size = 0;
     if (module_request.response != NULL) {
         for (uint64_t i = 0; i < module_request.response->module_count; i++) {
             struct limine_file *file = module_request.response->modules[i];
@@ -123,12 +159,20 @@ void startup(void) {
                 font_buffer = (uint8_t *)file->address;
                 continue;
             }
+            if (file->string != NULL && memcmp(file->string, "INIT", 4) == 0) {
+                init = (uint8_t *)file->address;
+                init_size = file->size;
+                continue;
+            }
         }
     } else {
         panic(framebuffer);
     }
     if (font_buffer == NULL) {
         panic(framebuffer);
+    }
+    if (init == NULL) {
+        panic_but_msg(framebuffer, "FATAL ERROR: FAILED TO LOCATE \"INIT\" TO STARTUP THE MACHINE!");
     }
 
     if (kernel_request.response == NULL || addr_request.response == NULL) {
@@ -307,12 +351,20 @@ void startup(void) {
 
     wrmsr(0x832, 0x20000 | 32);
 
-    wrmsr(0x838, lapic_timer);
+    // wrmsr(0x838, lapic_timer);
+    // Temporarily disabled the timer to work on usermode
 
     __asm__ volatile("sti");
 
 
     print("We are done!\n");
+
+    print("Launching init!\n");
+
+    launch_init(init, init_size, new_pd, hhdm);
+
+    print("We are back in the kernel!\n");
+
 
     __asm__ volatile("sti");
     while (1) {__asm__ volatile("hlt");}

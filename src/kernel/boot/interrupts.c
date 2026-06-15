@@ -57,6 +57,8 @@ void idt_init() {
         vectors[vector] = true;
     }
 
+    idt_set_descriptor(33, isr_stub_table[33], 0xEE);
+
     __asm__ volatile ("lidt %0" : : "m"(idtr)); // load the new IDT
 }
 
@@ -91,11 +93,24 @@ typedef struct {
     uint64_t ss;
 } __attribute__((packed)) registers_t;
 
+extern void return_to_kernel(void);
 
 
 
-__attribute__((noreturn))
 void exception_handler(registers_t* regs) {
+    if (regs->interrupt_number == 14) {
+        uint64_t cr2_val;
+        __asm__ volatile("mov %%cr2, %0" : "=r"(cr2_val));
+        bool is_user_mode = (regs->error_code & (1 << 2)) != 0;
+        if (is_user_mode) {
+            print("Segmentation Fault: Core Dumped.\n");
+            regs->rip = (uint64_t)return_to_kernel;
+            regs->cs = 0x08;
+            regs->ss = 0x10;
+            return;
+        }
+    }
+
     clear_screen();
     
     char buf[128];
@@ -127,6 +142,14 @@ void exception_handler(registers_t* regs) {
     print("All right, I've been thinking.\nWhen life gives you lemons?\nDon't make lemonade.\nMake life take the lemons back!\nGet mad!\nI don't want your damn lemons!\nWhat am I supposed to do with these?\nDemand to see life's manager!\nMake life rue the day it thought it could give Cave Johnson lemons!\nDo you know who I am?\nI'm the man who's going to burn your house down!\nWith the lemons!\nI'm going to get my engineers to invent a combustible lemon that burns your house down!\n");
 
     __asm__ volatile ("cli; hlt");
+}
+
+void test(uint64_t rax, uint64_t rbx) {
+    if (rax == 1) {
+        print((char*) rbx);
+    } else if (rax == 2) {
+        return_to_kernel();
+    }
 }
 
 void tick() {
