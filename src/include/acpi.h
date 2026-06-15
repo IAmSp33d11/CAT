@@ -44,5 +44,6 @@ struct XSDT {
 
 void validate_rsdp(void* rsdp_pointer);
 void* find_MADT(void* rsdp_pointer, uint64_t hhdm_offset);
+void* find_APIC(void* rsdp_pointer, uint64_t hhdm_offset);
 
 #endif

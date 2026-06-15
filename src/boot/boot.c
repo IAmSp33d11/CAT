@@ -45,12 +45,6 @@ static volatile struct limine_memmap_request memmap_request = {
     .revision = 0
 };
 
-__attribute__((used, section(".limine_requests")))
-static volatile struct limine_mp_request mp_request = {
-    .id = LIMINE_MP_REQUEST_ID,
-    .revision = 0,
-    .flags = 1
-};
 
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_executable_file_request kernel_request = {
@@ -149,9 +143,6 @@ void startup(void) {
     }
     memmap = memmap_request.response;
 
-    if (mp_request.response == NULL) {
-        panic_but_msg(framebuffer, "FATAL ERROR: LIMINE BOOTLOADER FAILED TO PROVIDE MULTIPROCESSOR RESPONSE!");
-    }
     if (rsdp_request.response == NULL) {
         panic_but_msg(framebuffer, "FATAL ERROR: LIMINE BOOTLOADER FUCKING HATES US AND REFUSES TO PROVIDE RSDP RESPONSE!");
     }
@@ -280,8 +271,18 @@ void startup(void) {
     void* madt = find_MADT(rsdp, hhdm);
     print("We found da MADT!\n");
 
+    dtoa(bytes_to_mib(get_used_ram_size(bitmap, memmap)), 2, buffer);
+    print("We are using ");
+    print(buffer);
+    print(" MiB of RAM!\n");
 
 
+    void* apic = find_APIC(rsdp, hhdm);
+    print("WE FOUND DA APIC!\n");
+    print("It is located at : 0x");
+    itoa_hex(((uint64_t) apic) - hhdm, buffer);
+    print(buffer);
+    print("\n");
 
 
 

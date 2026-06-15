@@ -34,6 +34,22 @@ void validate_rsdp(void* rsdp_pointer) {
     // Okay we chill :3
 }
 
+bool validate_table(struct ACPISDTHeader *tableHeader, size_t max_bytes)
+{
+    if (tableHeader->Length < sizeof(struct ACPISDTHeader) || tableHeader->Length > max_bytes) {
+        return false;
+    }
+    unsigned char sum = 0;
+
+    for (int i = 0; i < tableHeader->Length; i++)
+    {
+        sum += ((char *) tableHeader)[i];
+    }
+
+    return sum == 0;
+}
+
+
 
 void* find_MADT(void* rsdp_pointer, uint64_t hhdm_offset) {
     struct XSDP_t* rsdp = (struct XSDP_t*) rsdp_pointer;
@@ -41,6 +57,11 @@ void* find_MADT(void* rsdp_pointer, uint64_t hhdm_offset) {
     if (rsdp->Revision == 2) {
         xsdt = (struct XSDT *) (rsdp->XsdtAddress + hhdm_offset);
     }
+
+    if (!validate_table(&xsdt->h, 4096)) {
+        kernel_panic("KERNEL PANIC: HOW BORKED IS YOUR FUCKIN KAPUTER?!?!");
+    }
+
     int entries = (xsdt->h.Length - sizeof(xsdt->h)) / 8;
         
     for (int i = 0; i < entries; i++)
@@ -52,4 +73,18 @@ void* find_MADT(void* rsdp_pointer, uint64_t hhdm_offset) {
 
     kernel_panic("KERNEL PANIC: WE CANNOT FIND DA MADT! YOUR KAPUTER IS BORKED AGAIN!");
     return NULL;
+}
+
+void* find_APIC(void* rsdp_pointer, uint64_t hhdm_offset) {
+    void* madt = find_MADT(rsdp_pointer, hhdm_offset);
+
+    if (!validate_table((struct ACPISDTHeader*) madt, 8192)) {
+        kernel_panic("KERNEL PANIC: gimme gimme gimme some time to think\nI'm in the bathroom looking at me\nFace in the mirror is all I need\nWait until the reaper takes my life\nNever gonna get me out alive\nI will live a thousand million lives\nMy patience is waning, is this entertaining?\nOur patience is waning, is this entertaining?\nYes I like Imagine dragons. But your kaputer is very borked so I give up wtf. GET A NEW KAPUTER DUMBASS!");
+    }
+    uint8_t* madt_bytes = (uint8_t*) madt;
+    uint32_t apic_addr_val = *(uint32_t*)&madt_bytes[0x24];
+
+    void* apic_addr = (void*) (apic_addr_val + hhdm_offset);
+
+    return apic_addr;
 }
