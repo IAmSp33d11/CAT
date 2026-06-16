@@ -330,28 +330,30 @@ void startup(void) {
     print(buffer);
     print(" MiB of RAM!\n");
 
+    void* apic_addr = find_APIC(rsdp, hhdm);
+    init_apic(apic_addr);
+    print("We initialized the APIC!\n");
 
 
     uint64_t val =  rdmsr(0x1B);
 
-    // 2. Set Bit 11 (Enable APIC) and Bit 10 (x2APIC Mode)
+
     val |= (1 << 11) | (1 << 10);
 
-    wrmsr(0x1B, val);
+    apic_write(0x1B, val);
 
     uint32_t lapic_timer = calibrate_lapic_timer();
 
 
-    // We have x2APIC if we are alive still.
-    wrmsr(0x80F, 0x100 | 0x2F);
+    apic_write(0x80F, 0x100 | 0x2F);
 
-    wrmsr(0x808, 0);
+    apic_write(0x808, 0);
 
-    wrmsr(0x83E, 0x03);
+    apic_write(0x83E, 0x03);
 
-    wrmsr(0x832, 0x20000 | 32);
+    apic_write(0x832, 0x20000 | 32);
 
-    // wrmsr(0x838, lapic_timer);
+    apic_write(0x838, lapic_timer);
     // Temporarily disabled the timer to work on usermode
 
     __asm__ volatile("sti");
@@ -359,6 +361,7 @@ void startup(void) {
 
     print("We are done!\n");
 
+    
     print("Launching init!\n");
 
     launch_init(init, init_size, new_pd, hhdm);

@@ -107,10 +107,16 @@ limine:
 		$(MAKE) -C limine; \
 	fi
 
+.PHONY: run_kvm
+run_kvm: $(ISO_IMG)
+	@echo "[LAUNCH] Initializing CAT microkernel inside QEMU..."
+	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -bios $(BIOS) -serial stdio -cpu host,host-phys-bits=on -enable-kvm
+
 .PHONY: run
 run: $(ISO_IMG)
 	@echo "[LAUNCH] Initializing CAT microkernel inside QEMU..."
-	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -bios $(BIOS) -serial stdio -cpu host,host-phys-bits=on -enable-kvm
+	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -bios $(BIOS) -serial stdio
+
 
 .PHONY: clean
 clean:

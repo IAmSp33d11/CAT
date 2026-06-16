@@ -18,10 +18,6 @@ void validate_rsdp(void* rsdp_pointer) {
         kernel_panic("KERNEL PANIC: THE RSDP CHECKSUM IS INVALID! YOUR KAPUTER IS BORKED! PLEASE FIX IT BEFORE WE CAN RUN ON DIS KAPUTER!");
     }
 
-    if (rsdp->Revision == 0) {
-        kernel_panic("KERNEL PANIC: THIS OPERATING SYSTEM DOES NOT YET SUPPORT YOUR HARDWARE!");
-    }
-
     if (rsdp->Revision == 2) {
         for (size_t i = 0; i < 16; i++) {
             temp += rsdp_bytes[i + 20];

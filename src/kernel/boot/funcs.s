@@ -44,9 +44,6 @@ mov %cr0, %rax
 
     ret
 
-.extern saved_kernel_rsp
-.extern saved_kernel_rip
-
 .global jump_to_usermode
 # void jump_to_usermode(uint64_t entry_point, uint64_t user_stack);
 jump_to_usermode:
@@ -89,11 +86,6 @@ jump_to_usermode:
 # void return_to_kernel(void);
 return_to_kernel:
     cli
-
-    mov $0x80B, %ecx
-    xor %eax, %eax
-    xor %edx, %edx
-    wrmsr
 
     movq saved_kernel_rsp(%rip), %rsp
     movq saved_kernel_rip(%rip), %rax

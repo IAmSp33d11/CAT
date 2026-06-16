@@ -113,10 +113,9 @@ void exception_handler(registers_t* regs) {
         bool is_user_mode = (regs->cs & 0x3) == 3;
         if (is_user_mode) {
             print("General Protection Fault in Usermode: Process Terminated.\n");
-            // Kill the usermode task by redirecting RIP back to your kernel scheduler/cleanup
             regs->rip = (uint64_t)return_to_kernel;
-            regs->cs = 0x08;  // Your kernel CS
-            regs->ss = 0x10;  // Your kernel SS
+            regs->cs = 0x08;
+            regs->ss = 0x10;
             return;
         }
     }
