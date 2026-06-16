@@ -11,16 +11,16 @@ CFLAGS  := -Wall -Wextra -O2 -std=c11 -ffreestanding \
            -fno-stack-protector -fno-stack-check -fno-lto -fno-pic -fno-pie \
            -m64 -march=x86-64 -mabi=sysv \
            -mno-red-zone \
-           -mcmodel=kernel -Isrc/kernel/include
+           -mcmodel=kernel -Isrc/kernel/include -g
 
 LDFLAGS := -m elf_x86_64 -nostdlib -static -z max-page-size=0x1000 -T linker.lds
 
 USER_CFLAGS := -Wall -Wextra -O2 -std=c11 -ffreestanding \
                -fno-stack-protector -fno-stack-check -fno-lto -fno-pic -fno-pie \
-               -m64 -march=x86-64 -mabi=sysv -mno-red-zone
+               -m64 -march=x86-64 -mabi=sysv -mno-red-zone -g
 
-USER_ELF_LDFLAGS := -m elf_x86_64 -nostdlib -static -Ttext 0x400000
-INIT_BIN_LDFLAGS := $(USER_ELF_LDFLAGS) --oformat=binary
+USER_ELF_LDFLAGS := -m elf_x86_64 -nostdlib -static -T user.lds
+INIT_BIN_LDFLAGS := $(USER_ELF_LDFLAGS) --oformat=binary 
 
 NASMFLAGS := -f elf64
 
@@ -117,6 +117,16 @@ run: $(ISO_IMG)
 	@echo "[LAUNCH] Initializing CAT microkernel inside QEMU..."
 	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -bios $(BIOS) -serial stdio
 
+.PHONY: debug
+debug: $(ISO_IMG)
+	@echo "[DEBUG] Initializing CAT microkernel inside bochs..."
+	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -bios $(BIOS) -serial stdio -s -S
+
+
+.PHONY: gdb
+gdb: $(ISO_IMG)
+	@echo "[DEBUG] Starting up GDB..."
+	gdb bin/cat_kernel.elf -ex "target remote :1234" -ex "layout asm" -ex "layout regs"
 
 .PHONY: clean
 clean:

@@ -8,28 +8,35 @@
 // But first.
 // Test print.
 void main(void);
-void _start(void) {
+__attribute__((naked, section(".text.prologue"))) void _start(void) {
     main();
-    __asm__ volatile(
-        "int $33"
+    __asm__ volatile (
+        "syscall"
         :
-        : "a"(2), "b"(0)
-        : "memory"
-    );  
+        : "a"(2)
+        : "rcx", "r11", "memory"
+    );
 }
 
 
-void sys_test(uint64_t action, const char* message) {
+inline void sys_test(uint64_t action, const char* message) {
     __asm__ volatile (
-        "int $33"
+        "syscall"
         :
         : "a"(action), "b"(message)
-        : "memory"
+        : "rcx", "r11", "memory"
     );
 }
 
 void main(void) {
-    sys_test(1, "Hello, from init!\n");
+    __asm__ volatile (
+        "syscall"
+        :
+        : "a"(1), "b"("Hello, from init!\n")
+        : "rcx", "r11", "memory"
+    );
+
+    // while (1) { __asm__ volatile("nop"); };
 }
 
 

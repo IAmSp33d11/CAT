@@ -68,6 +68,8 @@ static volatile struct limine_rsdp_request rsdp_request = {
 
 
 // I dunno why I need these.
+// June 15th, 2026. I checked the linker.lds and figured it out and why they are in their positions.
+// Linker script changes their positions lol
 __attribute__((used, section(".limine_requests_start")))
 static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_MARKER;
 
@@ -79,8 +81,15 @@ static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARK
 // Limine Stuff above
 // Testing space below
 
+struct cpu_data {
+    uint64_t kernel_stack
+};
+
+struct cpu_data cpu_data;
+
 extern void jump_to_usermode(uint64_t entry_point, uint64_t user_stack);
 extern void return_to_kernel(void);
+extern void syscall_setup(void);
 
 #define INIT_STACK_SIZE 2
 
@@ -88,7 +97,7 @@ uint64_t saved_kernel_rsp = 0;
 uint64_t saved_kernel_rip = 0;
 
 void launch_init(void* init_addr, uint64_t init_size, uint64_t* pml4, uint64_t hhdm_offset) {
-    uint64_t init_size_in_pages = (init_size + 4095) >> 12;
+    uint64_t init_size_in_pages = ((init_size + 4095) >> 12) + 3;
     uint64_t phys_addr = ((uint64_t) init_addr) - hhdm_offset;
     for (size_t i = 0; i < init_size_in_pages; i++) {
         map_page(pml4, 0x400000 + (i * 4096), phys_addr + (i * 4096), 0x7, hhdm_offset, false);
@@ -97,10 +106,11 @@ void launch_init(void* init_addr, uint64_t init_size, uint64_t* pml4, uint64_t h
     uint64_t user_stack_bottom = 0x200000;
     for (size_t i = 0; i < INIT_STACK_SIZE; i++) {
         uint64_t temp = (uint64_t) alloc_page();
+        memset((uint8_t*) temp, 0, 4096);
         map_page(pml4, user_stack_bottom + (i * 4096), temp - hhdm_offset, 0x7, hhdm_offset, false);
     }
     
-    uint64_t user_stack_top = user_stack_bottom + (INIT_STACK_SIZE * 4096) - 8;
+    uint64_t user_stack_top = user_stack_bottom + (INIT_STACK_SIZE * 4096) - 16;
 
     jump_to_usermode(0x400000, user_stack_top);
 }
@@ -356,9 +366,18 @@ void startup(void) {
     // Temporarily disabled the timer to work on usermode
 
     __asm__ volatile("sti");
+    
 
+    print("Allocating a new stack for the kernel!\n");
+    uint64_t stack_pointer = ((uint64_t) alloc_page()) + 4096; 
 
-    print("We are done!\n");
+    cpu_data.kernel_stack = stack_pointer;
+    wrmsr(0xC0000102, (uint64_t) &cpu_data);
+
+    // hcf();
+    print("Setting up syscalls!\n");
+    syscall_setup();
+
 
     
     print("Launching init!\n");
