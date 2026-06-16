@@ -35,18 +35,20 @@ void init_apic(void* madt_apic_base) {
 // Our system must be running on any and all x86_64 CPUs
 void apic_write(uint32_t reg, uint64_t value) {
     if (current_apic_mode == APIC_MODE_X2APIC) {
-        wrmsr(0x800 + (reg >> 4), value);
+        wrmsr(reg, value);
     } else {
-        volatile uint32_t* target = (volatile uint32_t*)((uintptr_t)xapic_base_vaddr + reg);
+        uint32_t offset = (reg - 0x800) << 4;
+        volatile uint32_t* target = (volatile uint32_t*)((uintptr_t)xapic_base_vaddr + offset);
         *target = (uint32_t)value;
     }
 }
 
 uint64_t apic_read(uint32_t reg) {
     if (current_apic_mode == APIC_MODE_X2APIC) {
-        return rdmsr(0x800 + (reg >> 4));
+        return rdmsr(reg);
     } else {
-        volatile uint32_t* target = (volatile uint32_t*)((uintptr_t)xapic_base_vaddr + reg);
+        uint32_t offset = (reg - 0x800) << 4;
+        volatile uint32_t* target = (volatile uint32_t*)((uintptr_t)xapic_base_vaddr + offset);
         return *target;
     }
 }

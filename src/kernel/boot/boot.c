@@ -99,8 +99,7 @@ void launch_init(void* init_addr, uint64_t init_size, uint64_t* pml4, uint64_t h
         uint64_t temp = (uint64_t) alloc_page();
         map_page(pml4, user_stack_bottom + (i * 4096), temp - hhdm_offset, 0x7, hhdm_offset, false);
     }
-
-    // FIX: Shift the initial RSP down into the valid, mapped page boundary
+    
     uint64_t user_stack_top = user_stack_bottom + (INIT_STACK_SIZE * 4096) - 8;
 
     jump_to_usermode(0x400000, user_stack_top);
@@ -353,7 +352,7 @@ void startup(void) {
 
     apic_write(0x832, 0x20000 | 32);
 
-    apic_write(0x838, lapic_timer);
+    // apic_write(0x838, lapic_timer);
     // Temporarily disabled the timer to work on usermode
 
     __asm__ volatile("sti");
