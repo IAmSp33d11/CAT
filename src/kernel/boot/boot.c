@@ -8,6 +8,7 @@
 #include "virtmem.h"
 #include "acpi.h"
 #include "apic.h"
+#include "scheduler.h"
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(6);
@@ -96,8 +97,8 @@ extern void syscall_setup(void);
 uint64_t saved_kernel_rsp = 0;
 uint64_t saved_kernel_rip = 0;
 
-void launch_init(void* init_addr, uint64_t init_size, uint64_t* pml4, uint64_t hhdm_offset) {
-    uint64_t init_size_in_pages = ((init_size + 4095) >> 12) + 3;
+uint64_t map_init(void* init_addr, uint64_t init_size, uint64_t* pml4, uint64_t hhdm_offset) {
+        uint64_t init_size_in_pages = ((init_size + 4095) >> 12) + 3;
     uint64_t phys_addr = ((uint64_t) init_addr) - hhdm_offset;
     for (size_t i = 0; i < init_size_in_pages; i++) {
         map_page(pml4, 0x400000 + (i * 4096), phys_addr + (i * 4096), 0x7, hhdm_offset, false);
@@ -106,15 +107,16 @@ void launch_init(void* init_addr, uint64_t init_size, uint64_t* pml4, uint64_t h
     uint64_t user_stack_bottom = 0x200000;
     for (size_t i = 0; i < INIT_STACK_SIZE; i++) {
         uint64_t temp = (uint64_t) alloc_page();
-        memset((uint8_t*) temp, 0, 4096);
         map_page(pml4, user_stack_bottom + (i * 4096), temp - hhdm_offset, 0x7, hhdm_offset, false);
     }
     
-    uint64_t user_stack_top = user_stack_bottom + (INIT_STACK_SIZE * 4096) - 16;
-
-    jump_to_usermode(0x400000, user_stack_top);
+    uint64_t user_stack_top = user_stack_bottom + (INIT_STACK_SIZE * 4096);
+    return user_stack_top;
 }
 
+void launch_init(void* init_addr, uint64_t init_size, uint64_t* pml4, uint64_t hhdm_offset) {
+    jump_to_usermode(0x400000, map_init(init_addr, init_size, pml4, hhdm_offset));
+}
 
 // Testing space above
 // Actual Boot stuff below
@@ -378,13 +380,34 @@ void startup(void) {
     print("Setting up syscalls!\n");
     syscall_setup();
 
-
+    print("Initializing the scheduler!\n");
+    init_prgm_handler();
     
     print("Launching init!\n");
 
-    launch_init(init, init_size, new_pd, hhdm);
+    uint64_t init_stack = map_init(init, init_size, new_pd, hhdm);
+    struct prgm* init_prgm = add_prgm((uint64_t) new_pd, 0x400000, init_stack);
+    struct prgm* init_prgm_clone = add_prgm((uint64_t) new_pd, 0x4000000, init_stack);
+    struct prgm* init_prgm_two = add_prgm((uint64_t) new_pd, 0x4000000, init_stack);
+    struct prgm* scheduled = schedule();
+    if (init_prgm != scheduled) {
+        print("There is a major issue with the scheduler!\n");
+    }
+    scheduled = schedule();
+    if (init_prgm_clone != scheduled) {
+        print("There is a major issue with the scheduler!\n");
+    }
+    scheduled = schedule();
+    if (init_prgm_two != scheduled) {
+        print("There is a major issue with the scheduler!\n");
+    }
+    scheduled = schedule();
+    if (init_prgm != scheduled) {
+        print("There is a major issue with the scheduler!\n");
+    }
 
-    print("We are back in the kernel!\n");
+    print("We are done testing our scheduler!\n");
+
 
 
     __asm__ volatile("sti");

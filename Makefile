@@ -11,13 +11,13 @@ CFLAGS  := -Wall -Wextra -O2 -std=c11 -ffreestanding \
            -fno-stack-protector -fno-stack-check -fno-lto -fno-pic -fno-pie \
            -m64 -march=x86-64 -mabi=sysv \
            -mno-red-zone \
-           -mcmodel=kernel -Isrc/kernel/include -g
+           -mcmodel=kernel -Isrc/kernel/include
 
 LDFLAGS := -m elf_x86_64 -nostdlib -static -z max-page-size=0x1000 -T linker.lds
 
 USER_CFLAGS := -Wall -Wextra -O2 -std=c11 -ffreestanding \
                -fno-stack-protector -fno-stack-check -fno-lto -fno-pic -fno-pie \
-               -m64 -march=x86-64 -mabi=sysv -mno-red-zone -g
+               -m64 -march=x86-64 -mabi=sysv -mno-red-zone
 
 USER_ELF_LDFLAGS := -m elf_x86_64 -nostdlib -static -T user.lds
 INIT_BIN_LDFLAGS := $(USER_ELF_LDFLAGS) --oformat=binary 
@@ -35,7 +35,7 @@ OBJS     := $(patsubst src/kernel/%.c,obj/%.o,$(SRCS_KERNEL_C)) \
             $(patsubst src/kernel/%.s,obj/%.o,$(SRCS_KERNEL_ASM:.S=.o)) \
             $(patsubst src/kernel/%.asm,obj/%.o,$(SRCS_KERNEL_NASM))
 
-all: clean $(OUTPUT) $(USER_OUTPUT) $(USER_ELFS)
+all: clean $(OUTPUT) $(USER_OUTPUT) $(USER_ELFS) $(ISO_IMG)
 
 $(OUTPUT): $(OBJS)
 	@mkdir -p bin

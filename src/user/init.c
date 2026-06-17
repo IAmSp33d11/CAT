@@ -28,7 +28,23 @@ inline void sys_test(uint64_t action, const char* message) {
     );
 }
 
+
+
 void main(void) {
+    __asm__ volatile (
+        "syscall"
+        :
+        : "a"(4)
+        : "rcx", "r11", "memory"
+    );
+
+    __asm__ volatile (
+        "syscall"
+        :
+        : "a"(3)
+        : "rcx", "r11", "memory"
+    );
+
     __asm__ volatile (
         "syscall"
         :
@@ -36,7 +52,7 @@ void main(void) {
         : "rcx", "r11", "memory"
     );
 
-    // while (1) { __asm__ volatile("nop"); };
+
 }
 
 

@@ -18,5 +18,7 @@ void syscall(uint64_t rax, uint64_t rbx, uint64_t rdx, uint64_t r8, uint64_t r9)
         return_to_kernel();
     } else if (rax == 3) {
         colon_three();
+    } else if (rax == 4) {
+        clear_screen();
     }
 }

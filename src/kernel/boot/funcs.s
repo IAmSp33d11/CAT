@@ -79,6 +79,10 @@ mov %cr0, %rax
     or  $0x600, %rax
     mov %rax, %cr4
 
+    mov %cr4, %rax
+    or  $0x200, %rax
+    mov %rax, %cr4
+
     ret
 
 .global jump_to_usermode
@@ -174,4 +178,5 @@ syscall_stub:
     swapgs
 
     sysretq
+
 
