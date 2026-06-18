@@ -115,18 +115,18 @@ run-kvm: $(ISO_IMG)
 .PHONY: run
 run: $(ISO_IMG)
 	@echo "[LAUNCH] Initializing CAT microkernel inside QEMU..."
-	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -bios $(BIOS) -serial stdio
+	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -bios $(BIOS) -serial stdio -cpu max
 
 .PHONY: debug
 debug: $(ISO_IMG)
 	@echo "[DEBUG] Initializing CAT microkernel inside bochs..."
-	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -bios $(BIOS) -serial stdio -s -S
+	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -bios $(BIOS) -serial stdio -s -S -cpu max
 
 
 .PHONY: gdb
 gdb: $(ISO_IMG)
 	@echo "[DEBUG] Starting up GDB..."
-	gdb bin/cat_kernel.elf -ex "target remote :1234" -ex "layout asm" -ex "layout regs"
+	gdb bin/cat_kernel.elf -ex "target remote :1234" -ex "layout asm" -ex "layout regs" 
 
 .PHONY: clean
 clean:

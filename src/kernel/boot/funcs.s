@@ -66,22 +66,46 @@ reloadSegments:
     mov %ax, %ss
     ret
 
-.global enable_SSE
-.type enable_SSE, @function
-enable_SSE:
-# void enable_SSE(void);
-mov %cr0, %rax
-    and $0xFFFFFFFFFFFFFFFB, %rax
-    or  $0x2, %rax
-    mov %rax, %cr0
+.global check_support
+# bool check_support(void);
+check_support:
+    pushaq
 
-    mov %cr4, %rax
-    or  $0x600, %rax
-    mov %rax, %cr4
+    # Check if we support XSAVE
+    mov $1, %eax
+    cpuid
+    bt $26, %ecx
+    jnc .false
 
-    mov %cr4, %rax
-    or  $0x200, %rax
-    mov %rax, %cr4
+    popaq
+    mov $1, %rax
+    ret
+
+.false:
+    popaq
+    mov $0, %rax
+    ret
+
+.global enable_stuff
+.type enable_stuff, @function
+enable_stuff:
+# void enable_stuff(void);
+    movq %cr0, %rax
+    andq $0xFFFFFFFFFFFFFFFB, %rax
+    orq  $0x2, %rax
+    movq %rax, %cr0
+
+    movq %cr4, %rax
+    orq  $0x600, %rax
+    movq %rax, %cr4
+
+    movq %cr4, %rax
+    orq  $0x200, %rax
+    movq %rax, %cr4
+
+    movq %cr4, %rax
+    orq $(1 << 18), %rax
+    movq %rax, %cr4
 
     ret
 
@@ -176,6 +200,42 @@ syscall_stub:
     xchgq %rsp, %gs:0
 
     swapgs
+
+    sysretq
+
+
+.global start_scheduler
+# void start_scheduler(struct regs* registers, uint8_t xsave);
+start_scheduler:
+
+    leaq .kernel_return(%rip), %rax
+    movq %rax, saved_kernel_rip(%rip)
+    movq %rsp, saved_kernel_rsp(%rip)
+
+    movl $0x7, %eax
+    xor %edx, %edx
+    xsave (%rsi)
+
+    movq 0x90(%rdi), %rax
+    movq %rax, %cr3
+
+    movq 0x0(%rdi), %rax
+    movq 0x8(%rdi), %rbx
+    movq 0x18(%rdi), %rdx
+    movq 0x20(%rdi), %rsi
+    movq 0x30(%rdi), %rbp
+    movq 0x40(%rdi), %r8
+    movq 0x48(%rdi), %r9
+    movq 0x50(%rdi), %r10
+    movq 0x60(%rdi), %r12
+    movq 0x68(%rdi), %r13
+    movq 0x70(%rdi), %r14
+    movq 0x78(%rdi), %r15
+
+    movq 0x80(%rdi), %rcx # Program address
+    movq 0x88(%rdi), %r11 # RFLAGS
+
+    movq 0x38(%rdi), %rsp # Stack Pointer
 
     sysretq
 

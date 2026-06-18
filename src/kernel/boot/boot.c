@@ -91,6 +91,7 @@ struct cpu_data cpu_data;
 extern void jump_to_usermode(uint64_t entry_point, uint64_t user_stack);
 extern void return_to_kernel(void);
 extern void syscall_setup(void);
+extern bool check_support(void);
 
 #define INIT_STACK_SIZE 2
 
@@ -123,7 +124,7 @@ void launch_init(void* init_addr, uint64_t init_size, uint64_t* pml4, uint64_t h
 
 extern void setup_gdt(void);
 extern void idt_init(void);
-extern void enable_SSE(void);
+extern void enable_stuff(void);
 // Hey future me! If you rename this function, change it in linker.lds in ENTRY() too!
 void startup(void) {
     // Ensure the bootloader actually understands our base revision (see spec).
@@ -131,7 +132,7 @@ void startup(void) {
         hcf();
     }
     
-    enable_SSE();
+    enable_stuff();
 
 
     // Ensure we got a framebuffer.
@@ -209,6 +210,10 @@ void startup(void) {
 
     if (tsc_hz == 0) {
         panic_but_msg(framebuffer, "FATAL ERROR: FAILED TO SYNCHRONIZE TSC!");
+    }
+
+    if (!check_support) {
+        panic_but_msg(framebuffer, "FATAL ERROR: YOUR SYSTEM IS TOO OLD TO RUN THIS OS!\n");
     }
 
 
@@ -382,31 +387,14 @@ void startup(void) {
 
     print("Initializing the scheduler!\n");
     init_prgm_handler();
-    
-    print("Launching init!\n");
 
     uint64_t init_stack = map_init(init, init_size, new_pd, hhdm);
-    struct prgm* init_prgm = add_prgm((uint64_t) new_pd, 0x400000, init_stack);
-    struct prgm* init_prgm_clone = add_prgm((uint64_t) new_pd, 0x4000000, init_stack);
-    struct prgm* init_prgm_two = add_prgm((uint64_t) new_pd, 0x4000000, init_stack);
-    struct prgm* scheduled = schedule();
-    if (init_prgm != scheduled) {
-        print("There is a major issue with the scheduler!\n");
-    }
-    scheduled = schedule();
-    if (init_prgm_clone != scheduled) {
-        print("There is a major issue with the scheduler!\n");
-    }
-    scheduled = schedule();
-    if (init_prgm_two != scheduled) {
-        print("There is a major issue with the scheduler!\n");
-    }
-    scheduled = schedule();
-    if (init_prgm != scheduled) {
-        print("There is a major issue with the scheduler!\n");
-    }
+    struct prgm* init_prgm = add_prgm((uint64_t) new_pd - hhdm, 0x400000, init_stack);
 
-    print("We are done testing our scheduler!\n");
+    print("Launching init!\n");
+    run_prgm(init_prgm);
+
+    print("Returned from init!\n");
 
 
 
